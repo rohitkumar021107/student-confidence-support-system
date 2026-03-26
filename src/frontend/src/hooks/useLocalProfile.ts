@@ -15,6 +15,8 @@ export interface LocalProfile {
   userType?: string;
   userClass?: string;
   userBranch?: string;
+  profileImageUrl?: string;
+  interests?: string[];
 }
 
 /** Returns existing userId or generates a new one */

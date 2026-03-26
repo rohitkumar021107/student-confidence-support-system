@@ -1,0 +1,340 @@
+import { u as useNavigate, j as jsxRuntimeExports, r as reactExports, a as ue } from "./index-Ckhq5wqg.js";
+import { B as Button } from "./button-BIh8x5-U.js";
+import { I as Input } from "./input-xmDL7sLn.js";
+import { L as Label } from "./label-D8QudL-4.js";
+import { S as Select, a as SelectTrigger, b as SelectValue, c as SelectContent, d as SelectItem } from "./select-rejeMlA0.js";
+import { T as Tabs, a as TabsList, b as TabsTrigger, c as TabsContent } from "./tabs-C58zbaff.js";
+import { T as Textarea } from "./textarea-CrR2aSj8.js";
+import { A as ArrowLeft } from "./arrow-left-XwljNvNp.js";
+import { m as motion } from "./proxy-Dbnxvqnq.js";
+import { S as Send } from "./send-Dlh5DK76.js";
+import { C as ChevronDown } from "./chevron-down-BBeG029k.js";
+import { A as AnimatePresence } from "./index-Mq8_Okvk.js";
+import "./index-CnrHIEuR.js";
+import "./index-IXOTxK3N.js";
+import "./index-BOSQuwfv.js";
+import "./index-Dc__qxrz.js";
+import "./index-BkyIgZbR.js";
+import "./Combination-CK1nLulF.js";
+import "./index-KweAJefM.js";
+import "./createLucideIcon-Dtn6S9AL.js";
+import "./chevron-up-B4abJbyH.js";
+import "./index-DZWqq2Ik.js";
+const FAQS = [
+  {
+    q: "How do I submit a doubt?",
+    a: "Go to Submit Doubt page, fill in your question and subject, and hit Submit. It's anonymous!"
+  },
+  {
+    q: "Is AskSpark free to use?",
+    a: "Yes! AskSpark is completely free for all students."
+  },
+  {
+    q: "Can I ask questions anonymously?",
+    a: "Absolutely. No login required — just ask your doubt and get help."
+  },
+  {
+    q: "How do I access recorded lectures?",
+    a: "Go to Learning Hub → Lectures → Recorded Lectures tab."
+  },
+  {
+    q: "How does the weekly test work?",
+    a: "Tests are auto-generated each week based on popular topics. Go to Weekly Test from your dashboard."
+  },
+  {
+    q: "Can I chat with other students?",
+    a: "Yes! Join study rooms in the Chat section or send personal messages to peers."
+  },
+  {
+    q: "How do I earn points?",
+    a: "Ask a doubt (+10 points) or invite a friend (+20 points). Points show on your dashboard."
+  },
+  {
+    q: "How do I change my class or branch?",
+    a: "Go to your Profile page and click Edit Profile to update your class or branch."
+  }
+];
+const SEED_MESSAGES = [
+  {
+    id: 1,
+    text: "👋 Welcome to AskSpark Support! Ask us anything — we're here 24/7.",
+    isUser: false,
+    time: "just now"
+  },
+  { id: 2, text: "How can I help you today?", isUser: false, time: "just now" }
+];
+function ChatTab() {
+  const [messages, setMessages] = reactExports.useState(SEED_MESSAGES);
+  const [input, setInput] = reactExports.useState("");
+  const bottomRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    var _a;
+    (_a = bottomRef.current) == null ? void 0 : _a.scrollIntoView({ behavior: "smooth" });
+  });
+  function sendMessage() {
+    const text = input.trim();
+    if (!text) return;
+    const now = (/* @__PURE__ */ new Date()).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    const userMsg = { id: Date.now(), text, isUser: true, time: now };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setTimeout(() => {
+      const reply = {
+        id: Date.now() + 1,
+        text: "Thanks for reaching out! Our support team will get back to you soon. In the meantime, check the FAQ tab for quick answers. 😊",
+        isUser: false,
+        time: (/* @__PURE__ */ new Date()).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      };
+      setMessages((prev) => [...prev, reply]);
+    }, 1200);
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-[480px] glass-card rounded-2xl border border-white/40 overflow-hidden warm-shadow", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-4 py-3 border-b border-border/50 flex items-center gap-3 bg-white/40", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-white text-sm", children: "💬" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-display font-bold text-sm text-foreground", children: "AskSpark Support" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-green-600 font-medium", children: "● Online — 24/7" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto px-4 py-4 space-y-3", children: [
+      messages.map((msg) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        motion.div,
+        {
+          initial: { opacity: 0, y: 8 },
+          animate: { opacity: 1, y: 0 },
+          className: `flex ${msg.isUser ? "justify-end" : "justify-start"}`,
+          children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: `max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.isUser ? "gradient-primary text-white rounded-br-sm" : "bg-white/70 text-foreground border border-white/60 rounded-bl-sm"}`,
+              children: [
+                msg.text,
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: `text-xs mt-1 ${msg.isUser ? "text-white/70" : "text-muted-foreground"}`,
+                    children: msg.time
+                  }
+                )
+              ]
+            }
+          )
+        },
+        msg.id
+      )),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: bottomRef })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-3 border-t border-border/50 flex gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Input,
+        {
+          placeholder: "Type your message...",
+          value: input,
+          onChange: (e) => setInput(e.target.value),
+          onKeyDown: (e) => e.key === "Enter" && !e.shiftKey && sendMessage(),
+          className: "rounded-full border-border/60 bg-white/60 text-sm",
+          "data-ocid": "support.chat.input"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button,
+        {
+          size: "icon",
+          className: "rounded-full gradient-primary text-white border-0 flex-shrink-0",
+          onClick: sendMessage,
+          disabled: !input.trim(),
+          "data-ocid": "support.chat.submit_button",
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(Send, { className: "w-4 h-4" })
+        }
+      )
+    ] })
+  ] });
+}
+function FAQTab() {
+  const [open, setOpen] = reactExports.useState(null);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: FAQS.map((item, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "glass-card rounded-2xl border border-white/40 overflow-hidden",
+      "data-ocid": `support.faq.item.${i + 1}`,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            type: "button",
+            className: "w-full flex items-center justify-between px-5 py-4 text-left",
+            onClick: () => setOpen(open === i ? null : i),
+            "data-ocid": "support.faq.toggle",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-semibold text-foreground text-sm pr-4", children: item.q }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                ChevronDown,
+                {
+                  className: `w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${open === i ? "rotate-180" : ""}`
+                }
+              )
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { initial: false, children: open === i && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          motion.div,
+          {
+            initial: { height: 0, opacity: 0 },
+            animate: { height: "auto", opacity: 1 },
+            exit: { height: 0, opacity: 0 },
+            transition: { duration: 0.2 },
+            className: "overflow-hidden",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-5 pb-4 text-sm text-muted-foreground border-t border-border/40 pt-3", children: item.a })
+          }
+        ) })
+      ]
+    },
+    item.q
+  )) });
+}
+function HelpFormTab() {
+  const [name, setName] = reactExports.useState("");
+  const [subject, setSubject] = reactExports.useState("");
+  const [message, setMessage] = reactExports.useState("");
+  const [sending, setSending] = reactExports.useState(false);
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!name.trim() || !subject || !message.trim()) return;
+    setSending(true);
+    setTimeout(() => {
+      const requests = JSON.parse(
+        localStorage.getItem("support_requests") || "[]"
+      );
+      requests.push({ name, subject, message, timestamp: Date.now() });
+      localStorage.setItem("support_requests", JSON.stringify(requests));
+      setName("");
+      setSubject("");
+      setMessage("");
+      setSending(false);
+      ue.success("Your request has been sent! We'll get back to you soon.");
+    }, 800);
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "form",
+    {
+      onSubmit: handleSubmit,
+      className: "glass-card rounded-2xl border border-white/40 p-6 warm-shadow space-y-5",
+      "data-ocid": "support.help.panel",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { htmlFor: "help-name", children: "Your Name" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Input,
+            {
+              id: "help-name",
+              placeholder: "e.g. Rahul Sharma",
+              value: name,
+              onChange: (e) => setName(e.target.value),
+              required: true,
+              "data-ocid": "support.help.input"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { htmlFor: "help-subject", children: "Subject" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(Select, { value: subject, onValueChange: setSubject, required: true, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SelectTrigger, { id: "help-subject", "data-ocid": "support.help.select", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SelectValue, { placeholder: "Pick a subject" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SelectContent, { children: [
+              "Mathematics",
+              "Physics",
+              "Chemistry",
+              "Computer Science",
+              "Biology",
+              "Other"
+            ].map((s) => /* @__PURE__ */ jsxRuntimeExports.jsx(SelectItem, { value: s, children: s }, s)) })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { htmlFor: "help-message", children: "Message" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Textarea,
+            {
+              id: "help-message",
+              placeholder: "Describe your issue or question...",
+              rows: 4,
+              value: message,
+              onChange: (e) => setMessage(e.target.value),
+              required: true,
+              "data-ocid": "support.help.textarea"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Button,
+          {
+            type: "submit",
+            disabled: sending || !name.trim() || !subject || !message.trim(),
+            className: "w-full rounded-full gradient-primary text-white border-0 hover:opacity-90 font-semibold",
+            "data-ocid": "support.help.submit_button",
+            children: sending ? "Sending..." : "Send Request"
+          }
+        )
+      ]
+    }
+  );
+}
+function SupportPage() {
+  const navigate = useNavigate();
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen bg-background", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "gradient-hero py-10 px-4 sm:px-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-3xl mx-auto", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "button",
+        {
+          type: "button",
+          className: "inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors mb-6",
+          onClick: () => navigate({ to: "/learning" }),
+          "data-ocid": "support.link",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "w-4 h-4" }),
+            " Back to Learning Hub"
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { className: "font-display text-3xl sm:text-4xl font-bold text-foreground", children: [
+        "💬 ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gradient", children: "24/7 Support" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-2", children: "Chat with us, browse FAQs, or send a help request." })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "max-w-3xl mx-auto px-4 sm:px-6 py-10", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Tabs, { defaultValue: "chat", "data-ocid": "support.tab", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(TabsList, { className: "mb-8 rounded-xl", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TabsTrigger, { value: "chat", "data-ocid": "support.chat.tab", children: "💬 Live Chat" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TabsTrigger, { value: "faq", "data-ocid": "support.faq.tab", children: "❓ FAQ" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TabsTrigger, { value: "help", "data-ocid": "support.help.tab", children: "📬 Ask for Help" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "chat", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChatTab, {}) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "faq", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FAQTab, {}) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "help", children: /* @__PURE__ */ jsxRuntimeExports.jsx(HelpFormTab, {}) })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("footer", { className: "text-center py-8 text-xs text-muted-foreground border-t border-border/40", children: [
+      "© ",
+      (/* @__PURE__ */ new Date()).getFullYear(),
+      ". Built with ❤️ using",
+      " ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "a",
+        {
+          href: `https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`,
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "underline hover:text-primary",
+          children: "caffeine.ai"
+        }
+      )
+    ] })
+  ] });
+}
+export {
+  SupportPage as default
+};

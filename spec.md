@@ -1,40 +1,31 @@
-# AskSpark – Performance Optimization
+# AskSpark
 
 ## Current State
-
-AskSpark is a React + Firebase app with 10 page components. The largest files are StudentDashboard (1114 lines), ChatRoom (990 lines), TeacherDashboard (907 lines), and WeeklyTest (683 lines). All routes are imported eagerly in App.tsx, meaning the full JS bundle loads on every page visit. There are no skeleton loaders, no lazy loading on images, no service worker, and no code splitting. The initial screen can show a blank white flash before Firebase initializes.
+AskSpark has: LandingPage, OnboardingPage, StudentDashboard, TeacherDashboard, SubmitDoubt, HelpCenter, ChatRoom (group + personal), WeeklyTest, BlogList, BlogPost, ProfilePage. Routes are managed via TanStack Router in App.tsx. No authentication — userId from localStorage. Chat uses local state with mock data.
 
 ## Requested Changes (Diff)
 
 ### Add
-- React.lazy + Suspense code splitting for all 10 page routes in App.tsx
-- Skeleton loaders for StudentDashboard, TeacherDashboard, BlogList, BlogPost, ChatRoom
-- Branded AskSpark loading splash screen shown while Firebase / auth initializes (prevents blank white flash)
-- First-login onboarding welcome modal: steps shown once (Submit doubt → Get answer → Earn points → Climb leaderboard), stored in localStorage to only show once
-- loading="lazy" attribute on all img tags across all components
-- vite-plugin-pwa for service worker (asset caching, offline fallback)
+- `/learning` — LearningHub page (main hub with cards linking to Lectures, Practice, Support)
+- `/learning/lectures` — LecturesPage with two tabs: Live Classes (upcoming sessions, demo data) and Recorded Lectures (YouTube embeds, demo data)
+- `/learning/practice` — PracticePage (DPP) with subject/class/branch filter, 5 sample questions per subject, submit answers, then show video solution per question
+- `/learning/support` — SupportPage with: real-time chat UI (reuse ChatRoom group chat style), FAQ section (reuse existing FAQ content), and "Ask for help" form
+- Dashboard shortcuts: add Learning Hub card/shortcut on StudentDashboard
+- Navbar: add "Learning" link in the main nav
 
 ### Modify
-- App.tsx: convert all static imports of page components to React.lazy, wrap router in Suspense with skeleton fallback
-- main.tsx: add branded splash wrapper that shows loading screen until app mounts
-- StudentDashboard: mock Firestore calls capped at 20 items, add skeleton loading state, add loading="lazy" to images
-- TeacherDashboard: add skeleton loading state, add loading="lazy" to images
-- BlogList, BlogPost: add loading="lazy" to header images
-- LandingPage: add loading="lazy" to hero image
-- ChatRoom: show skeleton while initial messages load
-- vite.config.ts (or create): add vite-plugin-pwa config and manualChunks for vendor splitting
+- App.tsx: add 4 new routes: /learning, /learning/lectures, /learning/practice, /learning/support
+- StudentDashboard: add a Learning Hub shortcut card
+- LandingPage or Navbar: add Learning link in nav
 
 ### Remove
-- Eager imports of page components from App.tsx (replaced by lazy)
+- Nothing removed
 
 ## Implementation Plan
-
-1. Install vite-plugin-pwa as devDependency
-2. Update vite.config.ts with PWA plugin config and rollupOptions.manualChunks for react, firebase, radix-ui vendor chunks
-3. Convert App.tsx page imports to React.lazy, wrap all routes in a Suspense with a PageSkeleton fallback
-4. Create src/components/PageSkeleton.tsx – a fast branded skeleton (AskSpark logo + pulse bars)
-5. Create src/components/SplashScreen.tsx – branded loading screen with spark icon + spinner for initial app load
-6. Update main.tsx to show SplashScreen until React mounts
-7. Add skeleton loading states inside StudentDashboard and TeacherDashboard (show while mock data "loads")
-8. Add loading="lazy" to all img tags across LandingPage, BlogList, BlogPost, StudentDashboard, TeacherDashboard, ChatRoom
-9. Add onboarding welcome modal to StudentDashboard (shows once on first login, stored in localStorage key `askspark_onboarded`)
+1. Create `src/frontend/src/pages/LearningHub.tsx` — hub page with 3 feature cards (Lectures, Practice, Support) and intro section
+2. Create `src/frontend/src/pages/LecturesPage.tsx` — tabs for Live Classes (hardcoded upcoming sessions) and Recorded Lectures (YouTube iframes with sample videos)
+3. Create `src/frontend/src/pages/PracticePage.tsx` — DPP with class/branch selector, 5 questions per subject (hardcoded), MCQ radio inputs, submit, reveal video solution per question
+4. Create `src/frontend/src/pages/SupportPage.tsx` — tabs: Chat (reuse group chat component style), FAQ (hardcoded), Ask for Help form (name/subject/message, localStorage save)
+5. Update `App.tsx` — add 4 new lazy-loaded routes
+6. Update `StudentDashboard.tsx` — add Learning Hub shortcut card
+7. Update navbar in `LandingPage.tsx` — add Learning nav link
