@@ -8,7 +8,9 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { Suspense, lazy } from "react";
+import { AppRole } from "./backend";
 import PageSkeleton from "./components/PageSkeleton";
+import { loadLocalProfile } from "./hooks/useLocalProfile";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
@@ -59,6 +61,21 @@ const teacherDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard/teacher",
   component: TeacherDashboard,
+});
+// /dashboard redirect — sends user to role-specific dashboard
+const dashboardRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dashboard",
+  beforeLoad: () => {
+    const profile = loadLocalProfile();
+    throw redirect({
+      to:
+        profile?.role === AppRole.teacher
+          ? "/dashboard/teacher"
+          : "/dashboard/student",
+    });
+  },
+  component: () => null,
 });
 const helpRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -151,6 +168,7 @@ const routeTree = rootRoute.addChildren([
   submitRoute,
   studentDashboardRoute,
   teacherDashboardRoute,
+  dashboardRedirectRoute,
   helpRoute,
   chatRoute,
   weeklyTestRoute,
