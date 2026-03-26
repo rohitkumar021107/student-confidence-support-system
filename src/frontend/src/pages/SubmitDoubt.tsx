@@ -22,26 +22,19 @@ import {
   Loader2,
   Send,
   Shield,
-  Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import Header from "../components/Header";
-
-const SUBJECTS = [
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "English",
-  "History",
-  "Geography",
-  "Economics",
-  "Other",
-];
+import {
+  COLLEGE_BRANCHES,
+  COLLEGE_BRANCH_NAMES,
+  SCHOOL_CLASSES,
+  SCHOOL_SUBJECTS,
+  readUserProfile,
+} from "../data/branchData";
 
 const STEPS = [
   { n: 1, title: "Describe Your Doubt", icon: "📝" },
@@ -55,6 +48,7 @@ interface ImagePreview {
 }
 
 interface FormState {
+  branch: string;
   subject: string;
   title: string;
   description: string;
@@ -66,7 +60,12 @@ export default function SubmitDoubt() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+
+  // Read profile once on mount
+  const profile = readUserProfile();
+
   const [form, setForm] = useState<FormState>({
+    branch: profile.userBranch ?? profile.userClass ?? "",
     subject: "",
     title: "",
     description: "",
@@ -75,9 +74,44 @@ export default function SubmitDoubt() {
   });
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  // Derive subject list based on selected branch/class
+  const getSubjectsForBranch = (branchOrClass: string): string[] => {
+    if (!branchOrClass) {
+      // fallback
+      if (profile.userType === "school") return SCHOOL_SUBJECTS;
+      if (profile.userType === "college" && profile.userBranch) {
+        return COLLEGE_BRANCHES[profile.userBranch] ?? SCHOOL_SUBJECTS;
+      }
+      return SCHOOL_SUBJECTS;
+    }
+    // college branch?
+    if (COLLEGE_BRANCHES[branchOrClass]) return COLLEGE_BRANCHES[branchOrClass];
+    // school class
+    return SCHOOL_SUBJECTS;
+  };
+
+  const currentSubjects = getSubjectsForBranch(form.branch);
+
+  const isSchoolMode =
+    profile.userType === "school" || SCHOOL_CLASSES.includes(form.branch);
+  const isCollegeMode =
+    profile.userType === "college" ||
+    COLLEGE_BRANCH_NAMES.includes(form.branch);
+
+  // When branch/class changes, reset subject if it's no longer valid
+  const handleBranchChange = (val: string) => {
+    const subs = getSubjectsForBranch(val);
+    setForm((prev) => ({
+      ...prev,
+      branch: val,
+      subject: subs.includes(prev.subject) ? prev.subject : "",
+    }));
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -108,6 +142,25 @@ export default function SubmitDoubt() {
     );
     navigate({ to: "/dashboard/student" });
   };
+
+  // Label for branch/class selector
+  const branchLabel = isCollegeMode
+    ? "Branch"
+    : isSchoolMode
+      ? "Class"
+      : "Class / Branch";
+  const branchPlaceholder = isCollegeMode
+    ? "Select branch"
+    : isSchoolMode
+      ? "Select class"
+      : "Select class or branch";
+
+  // Items for branch/class selector
+  const branchItems: string[] = isCollegeMode
+    ? COLLEGE_BRANCH_NAMES
+    : isSchoolMode
+      ? SCHOOL_CLASSES
+      : [...SCHOOL_CLASSES, ...COLLEGE_BRANCH_NAMES];
 
   return (
     <div className="min-h-screen bg-background">
@@ -175,6 +228,31 @@ export default function SubmitDoubt() {
                 <h2 className="font-display text-xl font-bold text-foreground">
                   📝 Describe Your Doubt
                 </h2>
+
+                {/* Class / Branch selector */}
+                <div className="space-y-2">
+                  <Label>{branchLabel}</Label>
+                  <Select
+                    value={form.branch}
+                    onValueChange={handleBranchChange}
+                  >
+                    <SelectTrigger
+                      className="border-border"
+                      data-ocid="submit.select"
+                    >
+                      <SelectValue placeholder={branchPlaceholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branchItems.map((b) => (
+                        <SelectItem key={b} value={b}>
+                          {b}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Subject selector — changes based on branch/class */}
                 <div className="space-y-2">
                   <Label>Subject</Label>
                   <Select
@@ -188,7 +266,7 @@ export default function SubmitDoubt() {
                       <SelectValue placeholder="Select a subject" />
                     </SelectTrigger>
                     <SelectContent>
-                      {SUBJECTS.map((s) => (
+                      {currentSubjects.map((s) => (
                         <SelectItem key={s} value={s}>
                           {s}
                         </SelectItem>
@@ -196,6 +274,7 @@ export default function SubmitDoubt() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
                   <Label>Doubt Title</Label>
                   <Input
@@ -228,7 +307,8 @@ export default function SubmitDoubt() {
                           Submit Anonymously
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Your name won't be shown to teachers or classmates
+                          Your name won&apos;t be shown to teachers or
+                          classmates
                         </div>
                       </div>
                       <Switch
@@ -239,8 +319,8 @@ export default function SubmitDoubt() {
                     </div>
                     {form.anonymous && (
                       <div className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> You'll appear
-                        as “Anonymous Student”
+                        <CheckCircle2 className="w-3.5 h-3.5" /> You&apos;ll
+                        appear as &quot;Anonymous Student&quot;
                       </div>
                     )}
                   </div>
@@ -257,12 +337,62 @@ export default function SubmitDoubt() {
                     (optional)
                   </span>
                 </h2>
+
+                {/* Hidden file inputs */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFiles(e.target.files)}
+                  data-ocid="submit.upload_button"
+                />
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => handleFiles(e.target.files)}
+                  data-ocid="submit.camera_input"
+                />
+
+                {/* Primary action buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-2.5 p-6 rounded-2xl gradient-primary text-white font-semibold shadow-primary hover:opacity-90 transition-opacity"
+                    data-ocid="submit.camera_button"
+                  >
+                    <Camera className="w-8 h-8" />
+                    <span className="text-sm">Take Photo</span>
+                    <span className="text-xs opacity-80 font-normal">
+                      Opens camera directly
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-2.5 p-6 rounded-2xl border-2 border-border bg-muted/30 text-foreground font-semibold hover:border-primary/50 hover:bg-muted/60 transition-colors"
+                    data-ocid="submit.upload_button"
+                  >
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <span className="text-sm">Upload Image</span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      From gallery or files
+                    </span>
+                  </button>
+                </div>
+
+                {/* Drag-and-drop zone */}
                 <button
                   type="button"
-                  className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors cursor-pointer w-full ${
+                  className={`border border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer w-full ${
                     dragOver
                       ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
+                      : "border-border hover:border-primary/40"
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -277,31 +407,12 @@ export default function SubmitDoubt() {
                   onClick={() => fileInputRef.current?.click()}
                   data-ocid="submit.dropzone"
                 >
-                  <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                  <div className="text-sm font-medium text-foreground">
-                    Drag & drop images here
+                  <div className="text-xs text-muted-foreground">
+                    Or drag &amp; drop images here · PNG, JPG up to 10MB · Max 4
+                    images
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    or click to browse · PNG, JPG up to 10MB · Max 4 images
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleFiles(e.target.files)}
-                    data-ocid="submit.upload_button"
-                  />
                 </button>
-                <Button
-                  variant="outline"
-                  className="w-full border-border rounded-xl"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-ocid="submit.upload_button"
-                >
-                  <Camera className="w-4 h-4 mr-2" /> Take a Photo
-                </Button>
+
                 {form.images.length > 0 && (
                   <div>
                     <div className="text-sm font-medium text-foreground mb-3">
@@ -341,14 +452,21 @@ export default function SubmitDoubt() {
             {step === 3 && (
               <div className="space-y-5 animate-slide-in-right">
                 <h2 className="font-display text-xl font-bold text-foreground">
-                  🚀 Review & Submit
+                  🚀 Review &amp; Submit
                 </h2>
                 <Card className="border-border bg-muted/30">
                   <CardContent className="p-5 space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <span className="text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
-                        {form.subject || "No subject"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {form.branch && (
+                          <span className="text-xs font-medium bg-muted text-muted-foreground px-3 py-1 rounded-full">
+                            {form.branch}
+                          </span>
+                        )}
+                        <span className="text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
+                          {form.subject || "No subject"}
+                        </span>
+                      </div>
                       {form.anonymous && (
                         <span className="text-xs font-medium bg-green-100 text-green-700 px-3 py-1 rounded-full flex items-center gap-1">
                           <Shield className="w-3 h-3" /> Anonymous
