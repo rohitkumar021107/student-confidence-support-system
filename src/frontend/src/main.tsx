@@ -14,12 +14,30 @@ declare global {
   }
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+      gcTime: 10 * 60 * 1000,
+    },
+  },
+});
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+const rootEl = document.getElementById("root")!;
+rootEl.style.opacity = "0";
+rootEl.style.transition = "opacity 0.3s ease";
+
+ReactDOM.createRoot(rootEl).render(
   <QueryClientProvider client={queryClient}>
     <InternetIdentityProvider>
       <App />
     </InternetIdentityProvider>
   </QueryClientProvider>,
 );
+
+// Fade in after React renders to prevent blank white flash
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    rootEl.style.opacity = "1";
+  });
+});

@@ -1,45 +1,40 @@
-# AskSpark – SEO & Visibility Optimization
+# AskSpark – Performance Optimization
 
 ## Current State
-- index.html has basic SEO meta tags (title, description, keywords, OG, Twitter card, favicon)
-- Page title is "AskSpark | Ask. Learn. Spark."
-- LandingPage.tsx has Hero, Stats, Problem/Solution, Features, How It Works, CTA, Team, Footer
-- No robots.txt or sitemap.xml
-- Canonical tag points to https://askspark.app but the actual deployed URL is a Caffeine preview URL
-- No "What is AskSpark" section on homepage
-- No FAQ section
-- H1 reads "Never Fear to Ask Questions Again" — does not include the brand name "AskSpark"
-- No JSON-LD structured data for Google rich results
-- Target keywords missing from headings: student doubt platform, anonymous doubt app, ask doubts online
+
+AskSpark is a React + Firebase app with 10 page components. The largest files are StudentDashboard (1114 lines), ChatRoom (990 lines), TeacherDashboard (907 lines), and WeeklyTest (683 lines). All routes are imported eagerly in App.tsx, meaning the full JS bundle loads on every page visit. There are no skeleton loaders, no lazy loading on images, no service worker, and no code splitting. The initial screen can show a blank white flash before Firebase initializes.
 
 ## Requested Changes (Diff)
 
 ### Add
-- robots.txt in public/ folder — allows all crawlers, points to sitemap
-- sitemap.xml in public/ folder — lists all public pages with priorities
-- JSON-LD structured data (WebSite + Organization schema) in index.html
-- "What is AskSpark" section on LandingPage between Hero and Problem/Solution
-- FAQ section on LandingPage (7–8 questions with "AskSpark" keyword, target queries)
-- Keyword-rich alt text references in content where images are described
+- React.lazy + Suspense code splitting for all 10 page routes in App.tsx
+- Skeleton loaders for StudentDashboard, TeacherDashboard, BlogList, BlogPost, ChatRoom
+- Branded AskSpark loading splash screen shown while Firebase / auth initializes (prevents blank white flash)
+- First-login onboarding welcome modal: steps shown once (Submit doubt → Get answer → Earn points → Climb leaderboard), stored in localStorage to only show once
+- loading="lazy" attribute on all img tags across all components
+- vite-plugin-pwa for service worker (asset caching, offline fallback)
 
 ### Modify
-- index.html: update title to "AskSpark – Student Confidence Support System", strengthen meta description to include all target keywords, update canonical href to use window.location.origin dynamically via meta tag approach, add JSON-LD WebSite schema with SearchAction, add theme-color meta
-- LandingPage.tsx H1: include "AskSpark" brand name in the heading
-- LandingPage.tsx: update H2/H3 headings in Features, How It Works, and new sections to include target keywords naturally
-- LandingPage.tsx Hero subtitle: include keywords "student doubt platform" and "ask doubts online" naturally
-- Footer: add sitemap and SEO-related links
+- App.tsx: convert all static imports of page components to React.lazy, wrap router in Suspense with skeleton fallback
+- main.tsx: add branded splash wrapper that shows loading screen until app mounts
+- StudentDashboard: mock Firestore calls capped at 20 items, add skeleton loading state, add loading="lazy" to images
+- TeacherDashboard: add skeleton loading state, add loading="lazy" to images
+- BlogList, BlogPost: add loading="lazy" to header images
+- LandingPage: add loading="lazy" to hero image
+- ChatRoom: show skeleton while initial messages load
+- vite.config.ts (or create): add vite-plugin-pwa config and manualChunks for vendor splitting
 
 ### Remove
-- Nothing removed
+- Eager imports of page components from App.tsx (replaced by lazy)
 
 ## Implementation Plan
-1. Write `src/frontend/public/robots.txt` — User-agent: *, Disallow: nothing, Sitemap URL
-2. Write `src/frontend/public/sitemap.xml` — list /, /submit, /dashboard/student, /help, /chat with lastmod and priority
-3. Update `src/frontend/index.html` — title to "AskSpark – Student Confidence Support System", add richer description with all 4 target keywords, add JSON-LD WebSite schema with name/url/description/SearchAction, add theme-color
-4. Update `src/frontend/src/pages/LandingPage.tsx`:
-   - H1: "AskSpark – Ask Any Question. Build Real Confidence." or similar with brand name
-   - Hero subtitle: include "student doubt platform" and "ask doubts online" naturally
-   - Add `<section id="what-is-askspark">` between hero and stats with H2 "What is AskSpark?", 2 paragraphs covering platform purpose and keywords
-   - Features H2: include "anonymous doubt app" naturally
-   - Add FAQ section with `<section id="faq">` before Team, using Accordion component, 8 questions all featuring "AskSpark" or target keywords
-   - Ensure all section headings use proper semantic structure (h1 once, h2 for sections, h3 for cards)
+
+1. Install vite-plugin-pwa as devDependency
+2. Update vite.config.ts with PWA plugin config and rollupOptions.manualChunks for react, firebase, radix-ui vendor chunks
+3. Convert App.tsx page imports to React.lazy, wrap all routes in a Suspense with a PageSkeleton fallback
+4. Create src/components/PageSkeleton.tsx – a fast branded skeleton (AskSpark logo + pulse bars)
+5. Create src/components/SplashScreen.tsx – branded loading screen with spark icon + spinner for initial app load
+6. Update main.tsx to show SplashScreen until React mounts
+7. Add skeleton loading states inside StudentDashboard and TeacherDashboard (show while mock data "loads")
+8. Add loading="lazy" to all img tags across LandingPage, BlogList, BlogPost, StudentDashboard, TeacherDashboard, ChatRoom
+9. Add onboarding welcome modal to StudentDashboard (shows once on first login, stored in localStorage key `askspark_onboarded`)
