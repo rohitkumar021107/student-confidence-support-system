@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Doubt, DoubtSubmission, UserProfile } from "../backend";
+import type { Doubt, UserProfile } from "../backend";
 import type { AppRole } from "../backend";
 import { useActor } from "./useActor";
 import {
   type LocalProfile,
+  getOrCreateUserId,
   loadLocalProfile,
   saveLocalProfile,
 } from "./useLocalProfile";
@@ -94,13 +95,34 @@ export function useNotificationCount() {
   });
 }
 
+interface DoubtInput {
+  text: string;
+  isAnonymous: boolean;
+}
+
 export function useSubmitDoubt() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (submission: DoubtSubmission) => {
-      if (!actor) throw new Error("Service not available, please try again");
-      return actor.submitDoubt(submission);
+    mutationFn: async (input: DoubtInput) => {
+      const userId = getOrCreateUserId();
+      const profile = loadLocalProfile();
+      const stored = JSON.parse(
+        localStorage.getItem("askspark_doubts") || "[]",
+      );
+      stored.unshift({
+        id: `local_${Date.now()}`,
+        text: input.text,
+        subject: profile?.userBranch ?? profile?.userClass ?? "",
+        branch: profile?.userBranch ?? profile?.userClass ?? "",
+        isAnonymous: input.isAnonymous,
+        userId,
+        timestamp: Date.now(),
+        isAnswered: false,
+      });
+      localStorage.setItem(
+        "askspark_doubts",
+        JSON.stringify(stored.slice(0, 100)),
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["callerDoubts"] });

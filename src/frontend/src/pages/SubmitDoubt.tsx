@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ExternalBlob } from "../backend";
 import Header from "../components/Header";
 import {
   COLLEGE_BRANCHES,
@@ -36,7 +35,6 @@ import {
   SCHOOL_SUBJECTS,
   readUserProfile,
 } from "../data/branchData";
-import { getOrCreateUserId } from "../hooks/useLocalProfile";
 import { useSubmitDoubt } from "../hooks/useQueries";
 
 const STEPS = [
@@ -143,38 +141,10 @@ export default function SubmitDoubt() {
     try {
       const fullText = `[${form.branch} | ${form.subject}]\n\n${form.title}\n\n${form.description}`;
 
-      let imageBlob: ExternalBlob | undefined;
-      if (form.images.length > 0) {
-        const file = form.images[0].file;
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        imageBlob = ExternalBlob.fromBytes(bytes);
-      }
-
       await submitDoubtMutation.mutateAsync({
         text: fullText,
         isAnonymous: form.anonymous,
-        image: imageBlob,
       });
-
-      const userId = getOrCreateUserId();
-      const stored = JSON.parse(
-        localStorage.getItem("askspark_doubts") || "[]",
-      );
-      stored.unshift({
-        id: `local_${Date.now()}`,
-        text: fullText,
-        subject: form.subject,
-        branch: form.branch,
-        title: form.title,
-        isAnonymous: form.anonymous,
-        userId,
-        timestamp: Date.now(),
-        isAnswered: false,
-      });
-      localStorage.setItem(
-        "askspark_doubts",
-        JSON.stringify(stored.slice(0, 100)),
-      );
 
       toast.success(
         "Doubt submitted successfully! 🎉 A teacher will answer soon.",
@@ -555,8 +525,8 @@ export default function SubmitDoubt() {
                 </Card>
                 <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-sm text-blue-700">
                   <strong>What happens next?</strong> Your doubt will be
-                  submitted, AI will cluster it with similar questions, and a
-                  teacher will respond — usually within 24 hours.
+                  submitted and a teacher will respond — usually within 24
+                  hours.
                 </div>
                 <Button
                   className="w-full rounded-xl gradient-primary text-white font-semibold border-0 shadow-primary hover:opacity-90"
