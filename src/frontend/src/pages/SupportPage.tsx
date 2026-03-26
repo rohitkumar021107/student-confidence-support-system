@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, Send } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const FAQS = [
@@ -51,22 +51,194 @@ const FAQS = [
   },
 ];
 
-type Message = { id: number; text: string; isUser: boolean; time: string };
+type Message = {
+  id: number;
+  text: string;
+  isUser: boolean;
+  time: string;
+  showQuickButtons?: boolean;
+  relatedDoubts?: string[];
+};
 
-const SEED_MESSAGES: Message[] = [
-  {
-    id: 1,
-    text: "👋 Welcome to AskSpark Support! Ask us anything — we're here 24/7.",
-    isUser: false,
-    time: "just now",
-  },
-  { id: 2, text: "How can I help you today?", isUser: false, time: "just now" },
-];
+const WELCOME_MESSAGE: Message = {
+  id: 1,
+  text: "👋 Hi! I'm **AskSpark Bot**. I can guide you around AskSpark. Ask me anything!",
+  isUser: false,
+  time: "just now",
+  showQuickButtons: true,
+};
 
-function ChatTab() {
-  const [messages, setMessages] = useState<Message[]>(SEED_MESSAGES);
+function getBotReply(input: string): {
+  text: string;
+  showQuickButtons?: boolean;
+} {
+  const msg = input.toLowerCase();
+
+  if (msg.includes("doubt") || msg.includes("ask") || msg.includes("submit"))
+    return {
+      text: "Here's how to submit a doubt:\n1. Click **Submit Doubt** in the menu\n2. Type your question\n3. Choose your subject\n4. Hit Submit — done! No login needed. 🎯",
+    };
+
+  if (
+    msg.includes("profile") ||
+    msg.includes("edit") ||
+    msg.includes("photo") ||
+    msg.includes("picture")
+  )
+    return {
+      text: "Go to your **Profile page** → click Edit Profile. You can update your name, photo, class/branch, and interests. ✏️",
+    };
+
+  if (
+    msg.includes("lecture") ||
+    msg.includes("video") ||
+    msg.includes("class") ||
+    msg.includes("recorded")
+  )
+    return {
+      text: "Open **Learning Hub → Lectures** to watch live sessions or recorded videos. 🎓",
+    };
+
+  if (
+    msg.includes("test") ||
+    msg.includes("quiz") ||
+    msg.includes("dpp") ||
+    msg.includes("practice") ||
+    msg.includes("mcq")
+  )
+    return {
+      text: "Go to **Learning Hub → Practice** for DPP questions. Weekly tests are on your dashboard too! 📝",
+    };
+
+  if (msg.includes("chat") || msg.includes("message") || msg.includes("talk"))
+    return {
+      text: "Use the **Chat** section to join study rooms or send direct messages to teachers and students. 💬",
+    };
+
+  if (
+    msg.includes("support") ||
+    msg.includes("help") ||
+    msg.includes("problem") ||
+    msg.includes("issue")
+  )
+    return {
+      text: "You're already in the right place! Browse the **FAQ** tab or use **Ask for Help** to send a message to our team. 🙌",
+    };
+
+  if (
+    msg.includes("point") ||
+    msg.includes("reward") ||
+    msg.includes("badge") ||
+    msg.includes("leader")
+  )
+    return {
+      text: "Earn **+10 points** for doubts, **+20** for invites. Top scorers get the **Top Learner** badge! 🏆",
+    };
+
+  if (
+    msg.includes("invite") ||
+    msg.includes("refer") ||
+    msg.includes("friend") ||
+    msg.includes("share")
+  )
+    return {
+      text: "Share your referral link from the dashboard. Each friend who joins earns you **+20 points**! 🎁",
+    };
+
+  if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey"))
+    return {
+      text: "Hey there! 👋 I'm AskSpark Bot. What can I help you with today?",
+    };
+
+  return {
+    text: "I'm here to help! Try asking about **doubts**, **lectures**, **profile**, or **tests**. 🤖",
+    showQuickButtons: true,
+  };
+}
+
+function getRelatedDoubts(userInput: string): string[] {
+  try {
+    const stored = localStorage.getItem("askspark_doubts");
+    if (!stored) return [];
+    const doubts: { text: string }[] = JSON.parse(stored);
+    const inputWords = userInput
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 3);
+    if (inputWords.length === 0) return [];
+    const matches = doubts
+      .filter((d) => {
+        const dText = d.text?.toLowerCase() || "";
+        return inputWords.some((w) => dText.includes(w));
+      })
+      .map((d) => d.text)
+      .slice(0, 3);
+    return matches;
+  } catch {
+    return [];
+  }
+}
+
+function BoldText({ text }: { text: string }) {
+  const lines = text.split("\n");
+  return (
+    <>
+      {lines.map((line, li) => {
+        const parts = line.split("**");
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: positional text rendering
+          <span key={li}>
+            {parts.map((part, i) =>
+              i % 2 === 1 ? (
+                // biome-ignore lint/suspicious/noArrayIndexKey: positional bold segments
+                <strong key={i}>{part}</strong>
+              ) : (
+                // biome-ignore lint/suspicious/noArrayIndexKey: positional text segments
+                <span key={i}>{part}</span>
+              ),
+            )}
+            {li < lines.length - 1 && <br />}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-end gap-2 justify-start">
+      <div className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-white text-xs flex-shrink-0">
+        🤖
+      </div>
+      <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-white/70 border border-white/60 flex items-center gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            className="w-2 h-2 rounded-full bg-primary"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{
+              duration: 1,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: i * 0.25,
+            }}
+          />
+        ))}
+        <span className="text-xs text-muted-foreground ml-1">
+          AskSpark Bot is typing...
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BotChatTab() {
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   });
@@ -81,78 +253,161 @@ function ChatTab() {
     const userMsg: Message = { id: Date.now(), text, isUser: true, time: now };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setIsTyping(true);
+
     setTimeout(() => {
+      setIsTyping(false);
+      const { text: replyText, showQuickButtons } = getBotReply(text);
+      const related = getRelatedDoubts(text);
       const reply: Message = {
         id: Date.now() + 1,
-        text: "Thanks for reaching out! Our support team will get back to you soon. In the meantime, check the FAQ tab for quick answers. 😊",
+        text: replyText,
         isUser: false,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        ...(showQuickButtons ? { showQuickButtons: true } : {}),
+        ...(related.length > 0 ? { relatedDoubts: related } : {}),
       };
       setMessages((prev) => [...prev, reply]);
-    }, 1200);
+    }, 1000);
   }
 
   return (
-    <div className="flex flex-col h-[480px] glass-card rounded-2xl border border-white/40 overflow-hidden warm-shadow">
+    <div className="flex flex-col h-[520px] glass-card rounded-2xl border border-white/40 overflow-hidden warm-shadow">
+      {/* Bot header */}
       <div className="px-4 py-3 border-b border-border/50 flex items-center gap-3 bg-white/40">
         <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-white text-sm">
-          💬
+          🤖
         </div>
         <div>
           <div className="font-display font-bold text-sm text-foreground">
-            AskSpark Support
+            AskSpark Bot 🤖
           </div>
-          <div className="text-xs text-green-600 font-medium">
-            ● Online — 24/7
-          </div>
+          <div className="text-xs text-green-600 font-medium">● Active</div>
         </div>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((msg) => (
           <motion.div
             key={msg.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}
+            className={`flex flex-col ${
+              msg.isUser ? "items-end" : "items-start"
+            }`}
           >
             <div
-              className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                msg.isUser
-                  ? "gradient-primary text-white rounded-br-sm"
-                  : "bg-white/70 text-foreground border border-white/60 rounded-bl-sm"
+              className={`flex items-end gap-2 ${
+                msg.isUser ? "justify-end" : "justify-start"
               }`}
             >
-              {msg.text}
+              {!msg.isUser && (
+                <div className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-white text-xs flex-shrink-0">
+                  🤖
+                </div>
+              )}
               <div
-                className={`text-xs mt-1 ${msg.isUser ? "text-white/70" : "text-muted-foreground"}`}
+                className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                  msg.isUser
+                    ? "gradient-primary text-white rounded-br-sm"
+                    : "bg-white/70 text-foreground border border-white/60 rounded-bl-sm"
+                }`}
               >
-                {msg.time}
+                <BoldText text={msg.text} />
+                <div
+                  className={`text-xs mt-1 ${
+                    msg.isUser ? "text-white/70" : "text-muted-foreground"
+                  }`}
+                >
+                  {msg.time}
+                </div>
+                {/* Quick action buttons */}
+                {!msg.isUser && msg.showQuickButtons && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: "/submit" })}
+                      className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                      data-ocid="support.bot.ask_doubt_button"
+                    >
+                      📝 Ask Doubt
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: "/profile" })}
+                      className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                      data-ocid="support.bot.profile_button"
+                    >
+                      👤 Go to Profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: "/learning" })}
+                      className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                      data-ocid="support.bot.learning_button"
+                    >
+                      📚 Open Learning Hub
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
+            {/* Related doubts */}
+            {!msg.isUser &&
+              msg.relatedDoubts &&
+              msg.relatedDoubts.length > 0 && (
+                <div className="ml-8 mt-1.5 max-w-[80%] bg-muted/50 border border-border/40 rounded-xl px-3 py-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                    You may also find this helpful:
+                  </p>
+                  {msg.relatedDoubts.map((d, i) => (
+                    <p
+                      // biome-ignore lint/suspicious/noArrayIndexKey: related doubts shown in stable order
+                      key={`rd-${i}`}
+                      className="text-xs text-foreground/70 before:content-['•'] before:mr-1.5"
+                    >
+                      {d.length > 60 ? `${d.slice(0, 60)}...` : d}
+                    </p>
+                  ))}
+                </div>
+              )}
           </motion.div>
         ))}
+        {/* Typing indicator */}
+        <AnimatePresence>
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+            >
+              <TypingIndicator />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div ref={bottomRef} />
       </div>
 
+      {/* Input */}
       <div className="px-3 py-3 border-t border-border/50 flex gap-2">
         <Input
-          placeholder="Type your message..."
+          placeholder="Ask me anything about AskSpark..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
           className="rounded-full border-border/60 bg-white/60 text-sm"
-          data-ocid="support.chat.input"
+          data-ocid="support.bot.input"
         />
         <Button
           size="icon"
           className="rounded-full gradient-primary text-white border-0 flex-shrink-0"
           onClick={sendMessage}
-          disabled={!input.trim()}
-          data-ocid="support.chat.submit_button"
+          disabled={!input.trim() || isTyping}
+          data-ocid="support.bot.submit_button"
         >
           <Send className="w-4 h-4" />
         </Button>
@@ -181,7 +436,9 @@ function FAQTab() {
               {item.q}
             </span>
             <ChevronDown
-              className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${open === i ? "rotate-180" : ""}`}
+              className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${
+                open === i ? "rotate-180" : ""
+              }`}
             />
           </button>
           <AnimatePresence initial={false}>
@@ -311,10 +568,10 @@ export default function SupportPage() {
             <ArrowLeft className="w-4 h-4" /> Back to Learning Hub
           </button>
           <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground">
-            💬 <span className="text-gradient">24/7 Support</span>
+            🤖 <span className="text-gradient">24/7 Support</span>
           </h1>
           <p className="text-muted-foreground mt-2">
-            Chat with us, browse FAQs, or send a help request.
+            Chat with our AI bot, browse FAQs, or send a help request.
           </p>
         </div>
       </div>
@@ -323,7 +580,7 @@ export default function SupportPage() {
         <Tabs defaultValue="chat" data-ocid="support.tab">
           <TabsList className="mb-8 rounded-xl">
             <TabsTrigger value="chat" data-ocid="support.chat.tab">
-              💬 Live Chat
+              🤖 AskSpark Bot
             </TabsTrigger>
             <TabsTrigger value="faq" data-ocid="support.faq.tab">
               ❓ FAQ
@@ -334,7 +591,7 @@ export default function SupportPage() {
           </TabsList>
 
           <TabsContent value="chat">
-            <ChatTab />
+            <BotChatTab />
           </TabsContent>
           <TabsContent value="faq">
             <FAQTab />
