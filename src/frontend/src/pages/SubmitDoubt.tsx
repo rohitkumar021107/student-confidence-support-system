@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { ExternalBlob } from "../backend";
 import Header from "../components/Header";
 import {
   COLLEGE_BRANCHES,
@@ -35,6 +36,8 @@ import {
   SCHOOL_SUBJECTS,
   readUserProfile,
 } from "../data/branchData";
+import { getOrCreateUserId } from "../hooks/useLocalProfile";
+import { useSubmitDoubt } from "../hooks/useQueries";
 
 const STEPS = [
   { n: 1, title: "Describe Your Doubt", icon: "📝" },
@@ -45,6 +48,7 @@ const STEPS = [
 interface ImagePreview {
   url: string;
   name: string;
+  file: File;
 }
 
 interface FormState {
@@ -58,6 +62,7 @@ interface FormState {
 
 export default function SubmitDoubt() {
   const navigate = useNavigate();
+  const submitDoubtMutation = useSubmitDoubt();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
@@ -118,7 +123,7 @@ export default function SubmitDoubt() {
     const newImgs = Array.from(files)
       .filter((f) => f.type.startsWith("image/"))
       .slice(0, 4 - form.images.length)
-      .map((f) => ({ url: URL.createObjectURL(f), name: f.name }));
+      .map((f) => ({ url: URL.createObjectURL(f), name: f.name, file: f }));
     setForm((prev) => ({ ...prev, images: [...prev.images, ...newImgs] }));
   };
 
@@ -135,12 +140,62 @@ export default function SubmitDoubt() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setSubmitting(false);
-    toast.success(
-      "Doubt submitted successfully! 🎉 A teacher will answer soon.",
-    );
-    navigate({ to: "/dashboard/student" });
+    try {
+      const fullText = `[${form.branch} | ${form.subject}]\n\n${form.title}\n\n${form.description}`;
+
+      let imageBlob: ExternalBlob | undefined;
+      if (form.images.length > 0) {
+        const file = form.images[0].file;
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        imageBlob = ExternalBlob.fromBytes(bytes);
+      }
+
+      await submitDoubtMutation.mutateAsync({
+        text: fullText,
+        isAnonymous: form.anonymous,
+        image: imageBlob,
+      });
+
+      const userId = getOrCreateUserId();
+      const stored = JSON.parse(
+        localStorage.getItem("askspark_doubts") || "[]",
+      );
+      stored.unshift({
+        id: `local_${Date.now()}`,
+        text: fullText,
+        subject: form.subject,
+        branch: form.branch,
+        title: form.title,
+        isAnonymous: form.anonymous,
+        userId,
+        timestamp: Date.now(),
+        isAnswered: false,
+      });
+      localStorage.setItem(
+        "askspark_doubts",
+        JSON.stringify(stored.slice(0, 100)),
+      );
+
+      toast.success(
+        "Doubt submitted successfully! 🎉 A teacher will answer soon.",
+      );
+      setForm({
+        branch: profile.userBranch ?? profile.userClass ?? "",
+        subject: "",
+        title: "",
+        description: "",
+        anonymous: false,
+        images: [],
+      });
+      setStep(1);
+    } catch (err) {
+      console.error("Doubt submission failed:", err);
+      toast.error(
+        "Submission failed. Please check your connection and try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Label for branch/class selector

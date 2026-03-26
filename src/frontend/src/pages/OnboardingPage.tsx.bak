@@ -72,10 +72,19 @@ export default function OnboardingPage() {
       await submitProfile.mutateAsync({
         displayName: displayName.trim(),
         role: role as AppRole,
-        userType: userType ?? undefined,
-        userClass: userClass || undefined,
-        userBranch: userBranch || undefined,
       });
+
+      // Persist student profile choice
+      if (isStudent && userType) {
+        localStorage.setItem("userType", userType);
+        if (userType === "school" && userClass) {
+          localStorage.setItem("userClass", userClass);
+          localStorage.removeItem("userBranch");
+        } else if (userType === "college" && userBranch) {
+          localStorage.setItem("userBranch", userBranch);
+          localStorage.removeItem("userClass");
+        }
+      }
 
       toast.success("Profile created! Welcome aboard 🎉");
       if (role === AppRole.teacher) {
@@ -83,10 +92,8 @@ export default function OnboardingPage() {
       } else {
         navigate({ to: "/dashboard/student" });
       }
-    } catch (err) {
-      console.error("Failed to create profile:", err);
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      toast.error(`Failed to create profile: ${msg}`);
+    } catch {
+      toast.error("Failed to create profile. Please try again.");
     }
   };
 

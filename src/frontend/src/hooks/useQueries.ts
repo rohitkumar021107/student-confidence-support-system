@@ -2,18 +2,33 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Doubt, DoubtSubmission, UserProfile } from "../backend";
 import type { AppRole } from "../backend";
 import { useActor } from "./useActor";
+import {
+  type LocalProfile,
+  loadLocalProfile,
+  saveLocalProfile,
+} from "./useLocalProfile";
 
+/** Returns the user profile from localStorage — no auth required */
 export function useUserProfile() {
-  const { actor, isFetching } = useActor();
   return useQuery<UserProfile | null>({
     queryKey: ["userProfile"],
     queryFn: async () => {
-      if (!actor) return null;
-      return actor.getCallerUserProfile();
+      const profile = loadLocalProfile();
+      if (!profile) return null;
+      // Adapt to UserProfile shape expected by the rest of the app
+      return {
+        displayName: profile.displayName,
+        doubtsSubmitted: BigInt(0),
+        role: profile.role,
+      } as UserProfile;
     },
-    enabled: !!actor && !isFetching,
     staleTime: 30_000,
   });
+}
+
+/** Returns the full local profile (includes userType, class, branch) */
+export function useLocalFullProfile(): LocalProfile | null {
+  return loadLocalProfile();
 }
 
 export function useCallerDoubts() {
@@ -84,7 +99,7 @@ export function useSubmitDoubt() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (submission: DoubtSubmission) => {
-      if (!actor) throw new Error("Not authenticated");
+      if (!actor) throw new Error("Service not available, please try again");
       return actor.submitDoubt(submission);
     },
     onSuccess: () => {
@@ -105,7 +120,7 @@ export function useAnswerDoubt() {
       doubtId,
       response,
     }: { doubtId: string; response: string }) => {
-      if (!actor) throw new Error("Not authenticated");
+      if (!actor) throw new Error("Service not available, please try again");
       return actor.answerDoubt(doubtId, response);
     },
     onSuccess: () => {
@@ -116,16 +131,26 @@ export function useAnswerDoubt() {
   });
 }
 
+/** Saves profile to localStorage — no auth required */
 export function useSubmitProfile() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
       displayName,
       role,
-    }: { displayName: string; role: AppRole }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.submitUserProfile(displayName, role);
+      userType,
+      userClass,
+      userBranch,
+    }: {
+      displayName: string;
+      role: AppRole;
+      userType?: string;
+      userClass?: string;
+      userBranch?: string;
+    }) => {
+      // Save everything to localStorage under a generated userId
+      saveLocalProfile({ displayName, role, userType, userClass, userBranch });
+      return { displayName, role };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["userProfile"] });
