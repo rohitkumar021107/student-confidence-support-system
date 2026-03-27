@@ -1,3 +1,4 @@
+import DoubtSearch from "@/components/DoubtSearch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -162,6 +163,9 @@ export default function LecturesPage() {
                       {cls.subject}
                     </Badge>
                   </div>
+                  <Badge className="text-xs bg-amber-100 text-amber-700 border-0 mb-2">
+                    Sample
+                  </Badge>
                   <h3 className="font-display font-bold text-foreground text-lg mb-3">
                     {cls.title}
                   </h3>
@@ -190,6 +194,11 @@ export default function LecturesPage() {
           </TabsContent>
 
           <TabsContent value="recorded">
+            {/* Search inside recorded lectures */}
+            <div className="mb-6">
+              <DoubtSearch lecturesOnly />
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-6">
               {RECORDED.map((vid, i) => (
                 <motion.div
@@ -211,11 +220,16 @@ export default function LecturesPage() {
                     />
                   </div>
                   <div className="p-4">
-                    <Badge
-                      className={`text-xs mb-2 ${SUBJECT_COLORS[vid.subject] ?? ""} border-0`}
-                    >
-                      {vid.subject}
-                    </Badge>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge
+                        className={`text-xs ${SUBJECT_COLORS[vid.subject] ?? ""} border-0`}
+                      >
+                        {vid.subject}
+                      </Badge>
+                      <Badge className="text-xs bg-amber-100 text-amber-700 border-0">
+                        Sample
+                      </Badge>
+                    </div>
                     <h3 className="font-display font-bold text-foreground mb-1">
                       {vid.title}
                     </h3>

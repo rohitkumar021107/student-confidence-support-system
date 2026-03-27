@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppRole } from "../backend";
 import { loadLocalProfile, saveLocalProfile } from "../hooks/useLocalProfile";
+import { saveUserToFirestore } from "../lib/useFirestoreUsers";
 
 const INTERESTS = ["Maths", "Physics", "Programming", "Electronics", "Biology"];
 
@@ -140,12 +141,22 @@ export default function ProfilePage() {
     }
     setSaving(true);
     try {
-      saveLocalProfile({
+      const saved = saveLocalProfile({
         ...profile,
         displayName: displayName.trim(),
         interests,
         profileImageUrl,
       });
+      // Also sync to Firestore (best effort)
+      try {
+        await saveUserToFirestore(
+          saved.userId,
+          saved.displayName,
+          saved.role as string,
+        );
+      } catch {
+        /* ignore */
+      }
       toast.success("Profile saved!");
       // Redirect to dashboard after saving
       setTimeout(() => {

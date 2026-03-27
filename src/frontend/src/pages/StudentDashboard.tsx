@@ -9,9 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { rtdbListen } from "@/hooks/useFirebaseRTDB";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Award,
@@ -37,57 +39,9 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { loadLocalProfile } from "../hooks/useLocalProfile";
-
-const MOCK_DOUBTS = [
-  {
-    id: 1,
-    subject: "Mathematics",
-    subjectColor: "bg-blue-100 text-blue-700",
-    title: "Why does the limit of sin(x)/x as x→0 equal 1?",
-    status: "Answered",
-    timeAgo: "2 hours ago",
-    answer: {
-      teacher: "Prof. Meena Rao",
-      text: "Great question! The limit sin(x)/x → 1 as x→0 is proved using the squeeze theorem. Consider the unit circle: the area of triangle ≤ sector ≤ outer triangle gives us cos(x) ≤ sin(x)/x ≤ 1/cos(x). As x→0, both bounds converge to 1, so by squeeze theorem, sin(x)/x → 1.",
-      voiceUrl: "",
-      videoUrl: "",
-      imageUrl: "",
-    },
-  },
-  {
-    id: 2,
-    subject: "Computer Science",
-    subjectColor: "bg-purple-100 text-purple-700",
-    title: "What's the difference between a stack and a queue?",
-    status: "Answered",
-    timeAgo: "1 day ago",
-    answer: {
-      teacher: "Mr. Arjun Das",
-      text: "Stack follows LIFO (Last In, First Out) — like a pile of plates. Queue follows FIFO (First In, First Out) — like a line at a ticket counter. Stacks use push/pop; queues use enqueue/dequeue. Stacks are used in recursion and undo operations; queues in BFS and scheduling.",
-      voiceUrl: "",
-      videoUrl: "",
-      imageUrl: "",
-    },
-  },
-  {
-    id: 3,
-    subject: "Physics",
-    subjectColor: "bg-orange-100 text-orange-700",
-    title: "How does a transformer work and why can't it work on DC?",
-    status: "Pending",
-    timeAgo: "3 hours ago",
-    answer: null,
-  },
-  {
-    id: 4,
-    subject: "Chemistry",
-    subjectColor: "bg-green-100 text-green-700",
-    title: "What is the difference between ionic and covalent bonds?",
-    status: "Pending",
-    timeAgo: "5 hours ago",
-    answer: null,
-  },
-];
+import { useNotifications } from "../hooks/useNotifications";
+import { type FirestoreDoubt, useMyDoubts } from "../lib/useFirestoreDoubts";
+import { getRating, submitRating } from "../lib/useFirestoreRatings";
 
 const BADGES = [
   {
@@ -132,43 +86,6 @@ const BADGES = [
     earned: false,
     color: "bg-gray-100 text-gray-400",
   },
-];
-
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    icon: "\u2705",
-    type: "doubt_reply",
-    relatedId: 1,
-    text: "Prof. Meena Rao answered your Math doubt",
-    time: "2h ago",
-    read: false,
-  },
-  {
-    id: 2,
-    icon: "\ud83d\udcac",
-    type: "message",
-    relatedId: "teacher_arjun",
-    text: "New message from Mr. Arjun Das",
-    time: "4h ago",
-    read: false,
-  },
-  {
-    id: 3,
-    icon: "\ud83d\udcdd",
-    type: "weekly_test",
-    relatedId: null as number | string | null,
-    text: "Your weekly test is ready!",
-    time: "1d ago",
-    read: false,
-  },
-];
-
-const TEST_HISTORY = [
-  { week: 12, score: 80, strong: ["CS"], fearZones: ["Math"] },
-  { week: 11, score: 65, strong: ["Math", "CS"], fearZones: ["Physics"] },
-  { week: 10, score: 50, strong: ["CS"], fearZones: ["Chemistry", "Biology"] },
-  { week: 9, score: 40, strong: [], fearZones: ["Math", "Physics", "CS"] },
 ];
 
 function ConfidenceRing({ score }: { score: number }) {
@@ -229,9 +146,302 @@ function ScoreIndicator({ score }: { score: number }) {
   );
 }
 
+type NotifItem = {
+  id: number;
+  icon: string;
+  type: string;
+  relatedId: number | string | null;
+  text: string;
+  time: string;
+  read: boolean;
+};
+
+type TestHistoryItem = {
+  week: number;
+  score: number;
+  strong: string[];
+  fearZones: string[];
+  date: string;
+};
+
+// ── Active Live Classes ───────────────────────────────────────────────────────
+interface LiveClass {
+  id: string;
+  title: string;
+  subject: string;
+  hostName: string;
+  viewerCount: number;
+  active: boolean;
+}
+
+function ActiveLiveClasses({
+  navigate,
+}: {
+  navigate: ReturnType<typeof import("@tanstack/react-router").useNavigate>;
+}) {
+  const [classes, setClasses] = useState<LiveClass[]>([]);
+
+  useEffect(() => {
+    const unsub = rtdbListen("liveClasses", (val) => {
+      const raw = val as Record<string, Omit<LiveClass, "id">> | null;
+      if (!raw) {
+        setClasses([]);
+        return;
+      }
+      const active = Object.entries(raw)
+        .filter(([, c]) => c.active)
+        .map(([id, c]) => ({ ...c, id }));
+      setClasses(active);
+    });
+    return unsub;
+  }, []);
+
+  if (classes.length === 0) {
+    return (
+      <div className="rounded-2xl glass-card border-white/40 warm-shadow p-5">
+        <h2 className="font-display font-bold text-foreground mb-2 flex items-center gap-2">
+          🎥 Live Classes
+        </h2>
+        <div
+          className="text-center text-muted-foreground text-sm py-4"
+          data-ocid="liveclass.empty_state"
+        >
+          No live classes right now. Check back soon!
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl glass-card border-white/40 warm-shadow p-5">
+      <h2 className="font-display font-bold text-foreground mb-3 flex items-center gap-2">
+        <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+        Live Classes
+      </h2>
+      <div className="space-y-2">
+        {classes.map((c, i) => (
+          <div
+            key={c.id}
+            className="flex items-center justify-between p-3 rounded-xl bg-muted/40"
+            data-ocid={`liveclass.item.${i + 1}`}
+          >
+            <div>
+              <div className="font-semibold text-sm">{c.title}</div>
+              <div className="text-xs text-muted-foreground">
+                {c.subject} · {c.hostName} · {c.viewerCount ?? 0} watching
+              </div>
+            </div>
+            <button
+              type="button"
+              className="px-4 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors"
+              onClick={() =>
+                navigate({ to: `/live/${c.id}`, search: { role: "viewer" } })
+              }
+              data-ocid={`liveclass.primary_button.${i + 1}`}
+            >
+              Join
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Firestore Doubt Card for Students ───────────────────────────────────────────
+function FirestoreDoubtStudentCard({
+  doubt,
+  index,
+  expanded,
+  onToggle,
+  studentId,
+}: {
+  doubt: FirestoreDoubt;
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+  studentId: string;
+}) {
+  const [localRating, setLocalRating] = useState<number | null>(null);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+
+  // Check if already rated
+  useEffect(() => {
+    if (doubt.status === "answered" && !ratingSubmitted) {
+      getRating(doubt.id, studentId).then((r) => {
+        if (r !== null) {
+          setLocalRating(r);
+          setRatingSubmitted(true);
+        }
+      });
+    }
+  }, [doubt.id, doubt.status, studentId, ratingSubmitted]);
+
+  async function handleRate(stars: number) {
+    if (ratingSubmitted) return;
+    setLocalRating(stars);
+    setRatingSubmitted(true);
+    try {
+      await submitRating(
+        doubt.id,
+        doubt.userId,
+        doubt.teacherName ?? "Teacher",
+        studentId,
+        stars,
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <Card
+      className="glass-card border-white/40 warm-shadow hover:warm-shadow-lg transition-all duration-300"
+      data-ocid={`student.item.${index + 1}`}
+      data-doubt-id={doubt.id}
+    >
+      <CardContent className="p-5">
+        <button
+          type="button"
+          className="flex items-start justify-between gap-3 w-full text-left"
+          onClick={onToggle}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <Badge className="bg-primary/10 text-primary border-0 text-xs">
+                {doubt.subject}
+              </Badge>
+              {doubt.status === "answered" ? (
+                <Badge className="text-xs border-0 bg-green-100 text-green-700">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Answered
+                </Badge>
+              ) : (
+                <Badge className="text-xs border-0 bg-amber-100 text-amber-700">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Pending
+                </Badge>
+              )}
+            </div>
+            <div className="font-medium text-foreground text-sm truncate">
+              {doubt.question}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {doubt.createdAt
+                ? new Date(doubt.createdAt).toLocaleDateString()
+                : ""}
+            </div>
+          </div>
+          {expanded ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+          )}
+        </button>
+
+        {expanded && (
+          <div className="mt-4 pt-4 border-t border-border animate-fade-in">
+            {doubt.status === "answered" && doubt.answer ? (
+              <div className="space-y-3">
+                <div className="text-xs font-semibold text-green-700 mb-1">
+                  ✅ Teacher's Answer
+                </div>
+                <div className="bg-green-50 border border-green-100 rounded-xl p-4">
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    {doubt.answer}
+                  </p>
+                  {doubt.teacherName && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      — {doubt.teacherName}
+                      {doubt.answeredAt
+                        ? `, ${new Date(doubt.answeredAt).toLocaleString()}`
+                        : ""}
+                    </p>
+                  )}
+                </div>
+                {/* Rating */}
+                <div className="mt-3">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {ratingSubmitted ? "Your rating:" : "Rate this answer:"}
+                  </div>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => handleRate(star)}
+                        disabled={ratingSubmitted}
+                        className={`text-xl transition-colors ${
+                          star <= (localRating ?? 0)
+                            ? "text-yellow-400"
+                            : "text-gray-300 hover:text-yellow-300"
+                        } ${ratingSubmitted ? "cursor-default" : "cursor-pointer"}`}
+                        data-ocid={`student.rating.${index + 1}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  {ratingSubmitted && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Thanks for your feedback!
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-amber-600">
+                <Clock className="w-4 h-4" />
+                <span>Waiting for a teacher to answer this doubt</span>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const localProfile = loadLocalProfile();
+  const [premiumOpen, setPremiumOpen] = useState(false);
+  const classesAttended = (() => {
+    try {
+      return Number(localStorage.getItem("askspark_attended_classes") ?? "0");
+    } catch {
+      return 0;
+    }
+  })();
+
+  // Real doubts from Firestore (with localStorage fallback)
+  const userId = localProfile?.userId ?? "";
+  const firestoreDoubts = useMyDoubts(userId);
+  const realDoubts = firestoreDoubts;
+
+  // Real test history from localStorage
+  const [testHistory, setTestHistory] = useState<TestHistoryItem[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("askspark_test_history") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  // Reload test history on focus
+  useEffect(() => {
+    function reloadData() {
+      try {
+        setTestHistory(
+          JSON.parse(localStorage.getItem("askspark_test_history") || "[]"),
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+    window.addEventListener("focus", reloadData);
+    return () => window.removeEventListener("focus", reloadData);
+  }, []);
 
   // Onboarding modal — shown once on first login
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -248,34 +458,34 @@ export default function StudentDashboard() {
     const t = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(t);
   }, []);
-  const [expandedDoubt, setExpandedDoubt] = useState<number | null>(1);
-  const [videoCallDoubt, setVideoCallDoubt] = useState<number | null>(null);
+  const [expandedDoubt, setExpandedDoubt] = useState<number | string | null>(
+    null,
+  );
+  const [videoCallDoubt, setVideoCallDoubt] = useState<number | string | null>(
+    null,
+  );
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Notifications
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  // Notifications (real-time from RTDB)
+  const {
+    notifications: rtdbNotifs,
+    unreadCount,
+    markRead: markReadRTDB,
+    markAllRead: markAllReadRTDB,
+  } = useNotifications(userId);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   // Test history
   const [historyExpanded, setHistoryExpanded] = useState(true);
 
-  // Ratings keyed by doubt id
-  const [ratings, setRatings] = useState<Record<number, number>>({});
-  const [hoverRating, setHoverRating] = useState<Record<number, number>>({});
-
-  // Replies keyed by doubt id
-  const [replyInputs, setReplyInputs] = useState<Record<number, string>>({});
-  const [replies, setReplies] = useState<Record<number, string[]>>({});
-
-  const confidenceScore = 73;
-  const xp = 1240;
-  const xpToNext = 2000;
+  const confidenceScore = Math.min(realDoubts.length * 15, 100);
+  const xp = realDoubts.length * 50;
+  const xpToNext = Math.max(xp + 200, 500);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -292,30 +502,27 @@ export default function StudentDashboard() {
 
   const filteredDoubts =
     searchQuery.trim().length > 0
-      ? MOCK_DOUBTS.filter(
+      ? realDoubts.filter(
           (d) =>
-            d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            d.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (d.answer?.text ?? "")
+            (d.question ?? "")
               .toLowerCase()
-              .includes(searchQuery.toLowerCase()),
+              .includes(searchQuery.toLowerCase()) ||
+            (d.subject ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
         )
       : [];
 
-  function markRead(id: number) {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
+  function markRead(id: string | number) {
+    markReadRTDB(String(id));
   }
 
   function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    markAllReadRTDB();
   }
 
-  function handleNotifClick(n: (typeof MOCK_NOTIFICATIONS)[0]) {
-    markRead(n.id);
+  function handleNotifClick(n: NotifItem) {
+    markRead(String(n.id));
     setNotifOpen(false);
-    if (n.type === "doubt_reply") {
+    if (n.type === "doubt_reply" || n.type === "doubt_answered") {
       document
         .getElementById("doubts-section")
         ?.scrollIntoView({ behavior: "smooth" });
@@ -324,16 +531,6 @@ export default function StudentDashboard() {
     } else if (n.type === "weekly_test") {
       navigate({ to: "/weekly-test" });
     }
-  }
-
-  function submitReply(doubtId: number) {
-    const text = (replyInputs[doubtId] ?? "").trim();
-    if (!text) return;
-    setReplies((prev) => ({
-      ...prev,
-      [doubtId]: [...(prev[doubtId] ?? []), text],
-    }));
-    setReplyInputs((prev) => ({ ...prev, [doubtId]: "" }));
   }
 
   const NotifPanel = () => (
@@ -356,7 +553,7 @@ export default function StudentDashboard() {
           </button>
         )}
       </div>
-      {notifications.map((n) => (
+      {(rtdbNotifs as unknown as NotifItem[]).map((n) => (
         <button
           key={n.id}
           type="button"
@@ -373,9 +570,14 @@ export default function StudentDashboard() {
           )}
         </button>
       ))}
-      {notifications.every((n) => n.read) && (
+      {rtdbNotifs.length === 0 && (
+        <div className="py-6 text-center text-sm text-muted-foreground">
+          No notifications yet
+        </div>
+      )}
+      {rtdbNotifs.length > 0 && rtdbNotifs.every((n) => n.read) && (
         <div className="p-4 text-center text-sm text-muted-foreground">
-          You're all caught up! \uD83C\uDF89
+          You're all caught up! 🎉
         </div>
       )}
     </div>
@@ -507,19 +709,19 @@ export default function StudentDashboard() {
                         }}
                       >
                         <div className="flex items-center gap-2">
-                          <Badge
-                            className={`${d.subjectColor} border-0 text-xs`}
-                          >
+                          <Badge className="bg-primary/10 text-primary border-0 text-xs">
                             {d.subject}
                           </Badge>
                           <Badge
-                            className={`text-xs border-0 ${d.status === "Answered" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
+                            className={`text-xs border-0 ${d.status === "answered" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
                           >
-                            {d.status}
+                            {d.status === "answered"
+                              ? "✅ Answered"
+                              : "⏳ Pending"}
                           </Badge>
                         </div>
                         <div className="text-sm text-foreground mt-1 line-clamp-1">
-                          {d.title}
+                          {d.question}
                         </div>
                       </button>
                     ))
@@ -645,11 +847,11 @@ export default function StudentDashboard() {
                     setSearchQuery("");
                   }}
                 >
-                  <Badge className={`${d.subjectColor} border-0 text-xs`}>
+                  <Badge className="bg-primary/10 text-primary border-0 text-xs">
                     {d.subject}
                   </Badge>
                   <div className="text-sm text-foreground mt-1 line-clamp-1">
-                    {d.title}
+                    {d.question}
                   </div>
                 </button>
               ))}
@@ -664,17 +866,80 @@ export default function StudentDashboard() {
           <div className="text-3xl">⭐</div>
           <div className="flex-1">
             <div className="font-display font-bold text-foreground">
-              You're doing amazing, Arjun!
+              You're doing amazing, {localProfile?.displayName || "there"}!
             </div>
             <div className="text-sm text-muted-foreground">
-              You've asked 4 questions this week. Keep it up — curious minds
-              grow faster!
+              {realDoubts.length > 0
+                ? `You've asked ${realDoubts.length} question${realDoubts.length === 1 ? "" : "s"} so far. Keep it up — curious minds grow faster!`
+                : "Start asking doubts to grow your confidence!"}
             </div>
           </div>
           <Badge className="bg-amber-100 text-amber-700 border-amber-200 animate-pulse-soft hidden sm:flex">
             🔥 7-day streak
           </Badge>
         </div>
+
+        {/* Progress Analytics */}
+        <Card
+          className="glass-card border-white/40 warm-shadow"
+          data-ocid="student.progress.card"
+        >
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                <h2 className="font-display font-bold text-foreground">
+                  Your Progress
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="text-xs bg-gradient-to-r from-amber-400 to-orange-400 text-white px-3 py-1.5 rounded-full font-semibold hover:opacity-90 transition-opacity flex items-center gap-1"
+                onClick={() => setPremiumOpen(true)}
+                data-ocid="student.premium.button"
+              >
+                ✨ Go Premium
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-muted/40 rounded-xl p-3 text-center">
+                <div className="text-2xl font-display font-bold text-foreground">
+                  {realDoubts.length}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Doubts Asked
+                </div>
+              </div>
+              <div className="bg-muted/40 rounded-xl p-3 text-center">
+                <div className="text-2xl font-display font-bold text-foreground">
+                  {classesAttended}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Classes Attended
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Doubts progress</span>
+                <span>{realDoubts.length} / 10</span>
+              </div>
+              <Progress
+                value={Math.min((realDoubts.length / 10) * 100, 100)}
+                className="h-2 rounded-full"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              {realDoubts.length === 0
+                ? "🌱 Start by asking your first doubt!"
+                : realDoubts.length < 5
+                  ? "📚 Great start! Keep asking doubts to build confidence."
+                  : realDoubts.length < 10
+                    ? "🔥 You're on a roll! Almost at 10 doubts."
+                    : "🏆 Amazing! You've asked 10+ doubts. You're a champion learner!"}
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Learning Hub Shortcut */}
         <button
@@ -786,44 +1051,53 @@ export default function StudentDashboard() {
             {historyExpanded && (
               <div className="px-5 pb-5 border-t border-border/50 animate-fade-in">
                 <div className="space-y-2 mt-4">
-                  {TEST_HISTORY.map((row, i) => (
-                    <div
-                      key={row.week}
-                      className="flex items-center gap-3 rounded-xl p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
-                      data-ocid={`student.item.${i + 1}`}
-                    >
-                      <Badge className="bg-primary/10 text-primary border-primary/20 font-bold text-xs w-16 justify-center flex-shrink-0">
-                        Wk {row.week}
-                      </Badge>
-                      <div className="w-16 flex-shrink-0">
-                        <ScoreIndicator score={row.score} />
-                      </div>
-                      <div className="flex flex-wrap gap-1 flex-1 min-w-0">
-                        {row.fearZones.length > 0 ? (
-                          row.fearZones.map((z) => (
-                            <Badge
-                              key={z}
-                              className="bg-red-100 text-red-700 border-red-200 text-xs"
-                            >
-                              ⚠ {z}
-                            </Badge>
-                          ))
-                        ) : (
-                          <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
-                            ✅ No fear zones
-                          </Badge>
-                        )}
-                        {row.strong.map((s) => (
-                          <Badge
-                            key={s}
-                            className="bg-blue-100 text-blue-700 border-blue-200 text-xs"
-                          >
-                            💪 {s}
-                          </Badge>
-                        ))}
-                      </div>
+                  {testHistory.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <p>No test history available</p>
+                      <p className="text-xs mt-1">
+                        Take your first weekly test to see your progress
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    testHistory.map((row, i) => (
+                      <div
+                        key={row.week}
+                        className="flex items-center gap-3 rounded-xl p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+                        data-ocid={`student.item.${i + 1}`}
+                      >
+                        <Badge className="bg-primary/10 text-primary border-primary/20 font-bold text-xs w-16 justify-center flex-shrink-0">
+                          Wk {row.week}
+                        </Badge>
+                        <div className="w-16 flex-shrink-0">
+                          <ScoreIndicator score={row.score} />
+                        </div>
+                        <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+                          {row.fearZones.length > 0 ? (
+                            row.fearZones.map((z) => (
+                              <Badge
+                                key={z}
+                                className="bg-red-100 text-red-700 border-red-200 text-xs"
+                              >
+                                ⚠ {z}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
+                              ✅ No fear zones
+                            </Badge>
+                          )}
+                          {row.strong.map((s) => (
+                            <Badge
+                              key={s}
+                              className="bg-blue-100 text-blue-700 border-blue-200 text-xs"
+                            >
+                              💪 {s}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
                 <Button
                   size="sm"
@@ -1002,223 +1276,50 @@ export default function StudentDashboard() {
             </Button>
           </div>
           <div className="space-y-3" data-ocid="student.list">
-            {MOCK_DOUBTS.map((doubt, i) => (
-              <Card
-                key={doubt.id}
-                className="glass-card border-white/40 warm-shadow hover:warm-shadow-lg transition-all duration-300"
-                data-ocid={`student.item.${i + 1}`}
-                data-doubt-id={doubt.id}
+            {realDoubts.length === 0 ? (
+              <div
+                className="text-center py-12 text-muted-foreground"
+                data-ocid="student.empty_state"
               >
-                <CardContent className="p-5">
-                  {/* Header row - clickable */}
-                  <button
-                    type="button"
-                    className="flex items-start justify-between gap-3 w-full text-left"
-                    onClick={() =>
-                      setExpandedDoubt(
-                        expandedDoubt === doubt.id ? null : doubt.id,
-                      )
-                    }
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <Badge
-                          className={`${doubt.subjectColor} border-0 text-xs`}
-                        >
-                          {doubt.subject}
-                        </Badge>
-                        <Badge
-                          className={`text-xs border-0 ${doubt.status === "Answered" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
-                        >
-                          {doubt.status === "Answered" ? (
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                          ) : (
-                            <Clock className="w-3 h-3 mr-1" />
-                          )}
-                          {doubt.status}
-                        </Badge>
-                      </div>
-                      <div className="font-medium text-foreground text-sm truncate">
-                        {doubt.title}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {doubt.timeAgo}
-                      </div>
-                    </div>
-                    {expandedDoubt === doubt.id ? (
-                      <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
-                    )}
-                  </button>
-
-                  {/* Expanded: has answer */}
-                  {expandedDoubt === doubt.id && doubt.answer && (
-                    <div className="mt-4 pt-4 border-t border-border animate-fade-in">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">
-                          {doubt.answer.teacher.charAt(0)}
-                        </div>
-                        <span className="text-xs font-semibold text-foreground">
-                          {doubt.answer.teacher}
-                        </span>
-                        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
-                          Teacher
-                        </Badge>
-                      </div>
-                      {doubt.answer.voiceUrl && (
-                        <audio
-                          controls
-                          src={doubt.answer.voiceUrl}
-                          className="w-full mb-3 rounded-lg"
-                        >
-                          <track kind="captions" />
-                        </audio>
-                      )}
-                      {doubt.answer.videoUrl && (
-                        <video
-                          controls
-                          src={doubt.answer.videoUrl}
-                          className="w-full rounded-xl mb-3"
-                        >
-                          <track kind="captions" />
-                        </video>
-                      )}
-                      {doubt.answer.imageUrl && (
-                        <img
-                          src={doubt.answer.imageUrl}
-                          alt="Teacher attachment"
-                          className="rounded-xl mb-3 max-w-sm"
-                        />
-                      )}
-                      {doubt.answer.text && (
-                        <p className="text-sm text-foreground/80 leading-relaxed bg-muted/40 rounded-xl p-4">
-                          {doubt.answer.text}
-                        </p>
-                      )}
-                      <Button
-                        size="sm"
-                        className="rounded-full gradient-primary text-white border-0 shadow-primary mt-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setVideoCallDoubt(doubt.id);
-                        }}
-                        data-ocid="student.primary_button"
-                      >
-                        <Video className="w-4 h-4 mr-2" /> Join Video Call
-                      </Button>
-
-                      {/* Rating & Reply divider */}
-                      <div className="border-t border-border/50 mt-4 pt-4">
-                        {/* Star Rating */}
-                        {ratings[doubt.id] ? (
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="text-sm text-muted-foreground">
-                              Thanks for your feedback!
-                            </span>
-                            <span className="font-bold text-amber-500">
-                              ⭐ {ratings[doubt.id]}/5
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="text-sm text-muted-foreground">
-                              Rate this answer:
-                            </span>
-                            <div className="flex gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                  key={star}
-                                  type="button"
-                                  className="transition-transform hover:scale-110 focus:outline-none"
-                                  onClick={() =>
-                                    setRatings((prev) => ({
-                                      ...prev,
-                                      [doubt.id]: star,
-                                    }))
-                                  }
-                                  onMouseEnter={() =>
-                                    setHoverRating((prev) => ({
-                                      ...prev,
-                                      [doubt.id]: star,
-                                    }))
-                                  }
-                                  onMouseLeave={() =>
-                                    setHoverRating((prev) => ({
-                                      ...prev,
-                                      [doubt.id]: 0,
-                                    }))
-                                  }
-                                  aria-label={`Rate ${star} star`}
-                                  data-ocid={`student.toggle.${star}`}
-                                >
-                                  <Star
-                                    className={`w-5 h-5 ${star <= (hoverRating[doubt.id] ?? 0) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`}
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Reply section */}
-                        <div className="space-y-2">
-                          {(replies[doubt.id] ?? []).map((reply, ri) => (
-                            <div
-                              key={`reply-${doubt.id}-${ri}`}
-                              className="flex items-start gap-2 bg-muted/30 rounded-xl p-3"
-                            >
-                              <div className="w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                A
-                              </div>
-                              <span className="text-sm text-foreground">
-                                {reply}
-                              </span>
-                            </div>
-                          ))}
-                          <div className="flex gap-2">
-                            <Input
-                              className="flex-1 rounded-full h-9 text-sm bg-white/60 border-border"
-                              placeholder="Ask a follow-up…"
-                              value={replyInputs[doubt.id] ?? ""}
-                              onChange={(e) =>
-                                setReplyInputs((prev) => ({
-                                  ...prev,
-                                  [doubt.id]: e.target.value,
-                                }))
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") submitReply(doubt.id);
-                              }}
-                              data-ocid="student.input"
-                            />
-                            <Button
-                              size="sm"
-                              className="rounded-full gradient-primary text-white border-0 h-9 w-9 p-0 flex-shrink-0"
-                              onClick={() => submitReply(doubt.id)}
-                              data-ocid="student.submit_button"
-                            >
-                              <Send className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Expanded: pending */}
-                  {expandedDoubt === doubt.id && !doubt.answer && (
-                    <div className="mt-4 pt-4 border-t border-border animate-fade-in">
-                      <div className="flex items-center gap-2 text-sm text-amber-600">
-                        <Clock className="w-4 h-4" /> Your doubt is in the
-                        queue. A teacher will respond soon!
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No doubts submitted yet</p>
+                <p className="text-sm mt-1">Start by asking your first doubt</p>
+                <Button
+                  size="sm"
+                  className="mt-4 rounded-full gradient-primary text-white border-0"
+                  onClick={() => navigate({ to: "/submit" })}
+                  data-ocid="student.primary_button"
+                >
+                  Ask a Doubt
+                </Button>
+              </div>
+            ) : (
+              realDoubts.map((doubt, i) => (
+                <FirestoreDoubtStudentCard
+                  key={doubt.id}
+                  doubt={doubt}
+                  index={i}
+                  expanded={expandedDoubt === doubt.id}
+                  onToggle={() =>
+                    setExpandedDoubt(
+                      expandedDoubt === doubt.id ? null : doubt.id,
+                    )
+                  }
+                  studentId={userId}
+                />
+              ))
+            )}
           </div>
+        </div>
+
+        {/* Ad Banner */}
+        <div
+          className="border border-dashed border-primary/20 bg-primary/5 rounded-xl p-3 text-xs text-muted-foreground text-center"
+          data-ocid="student.ad.panel"
+        >
+          📢 Your Ad Here — Partner with AskSpark
+          <br />
+          Reach 10,000+ students · sponsor@askspark.app
         </div>
 
         <div className="text-center text-xs text-muted-foreground py-6">
@@ -1235,17 +1336,89 @@ export default function StudentDashboard() {
 
         {videoCallDoubt !== null &&
           (() => {
-            const d = MOCK_DOUBTS.find((x) => x.id === videoCallDoubt);
+            const d = realDoubts.find(
+              (x) => String(x.id) === String(videoCallDoubt),
+            );
             return (
               <VideoCallModal
                 open={videoCallDoubt !== null}
                 onClose={() => setVideoCallDoubt(null)}
-                studentName={d?.answer?.teacher ?? "Prof. Meena Rao"}
+                studentName={(d?.question ?? "").slice(0, 20) || "Student"}
                 isTeacher={false}
               />
             );
           })()}
       </main>
+
+      {/* Premium Dialog */}
+      <Dialog open={premiumOpen} onOpenChange={setPremiumOpen}>
+        <DialogContent className="max-w-sm" data-ocid="student.premium.dialog">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-center">
+              ✨ AskSpark Premium
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm mt-1">
+              Unlock advanced features for a better learning experience
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            {[
+              {
+                icon: "⚡",
+                title: "Priority Doubt Answers",
+                desc: "Get answers 3x faster from teachers",
+              },
+              {
+                icon: "💬",
+                title: "Faster Teacher Response",
+                desc: "Direct access to top educators",
+              },
+              {
+                icon: "📊",
+                title: "Advanced Analytics",
+                desc: "Deep insights into your learning patterns",
+              },
+              {
+                icon: "🏆",
+                title: "Exclusive Badges",
+                desc: "Premium profile badges & rewards",
+              },
+            ].map((f) => (
+              <div
+                key={f.title}
+                className="flex items-start gap-3 p-3 rounded-xl bg-muted/40"
+              >
+                <span className="text-xl">{f.icon}</span>
+                <div>
+                  <div className="font-semibold text-sm">{f.title}</div>
+                  <div className="text-xs text-muted-foreground">{f.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-center">
+            <span className="text-amber-700 font-semibold text-sm">
+              🚀 Coming Soon
+            </span>
+            <p className="text-xs text-amber-600 mt-0.5">
+              We are working on Premium. Stay tuned!
+            </p>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+              onClick={() => setPremiumOpen(false)}
+              data-ocid="student.premium.close_button"
+            >
+              Got It!
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Active Live Classes */}
+      <ActiveLiveClasses navigate={navigate} />
 
       {/* First-login onboarding modal */}
       <Dialog

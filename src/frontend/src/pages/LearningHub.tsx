@@ -1,3 +1,4 @@
+import DoubtSearch from "@/components/DoubtSearch";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, BookOpen, MessageSquare, PenLine } from "lucide-react";
 import { motion } from "motion/react";
@@ -72,8 +73,13 @@ export default function LearningHub() {
         </div>
       </section>
 
+      {/* Search */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        <DoubtSearch />
+      </div>
+
       {/* Cards */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-12">
         <div className="grid sm:grid-cols-3 gap-6">
           {HUB_CARDS.map((card, i) => (
             <motion.button
@@ -127,6 +133,14 @@ export default function LearningHub() {
           </p>
         </motion.div>
       </section>
+
+      {/* Ad Banner */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-6">
+        <div className="border border-dashed border-primary/20 bg-primary/5 rounded-xl p-3 text-xs text-muted-foreground text-center">
+          📢 Sponsored · Reach AskSpark&#39;s learning community ·
+          sponsor@askspark.app
+        </div>
+      </div>
 
       {/* Footer */}
       <footer className="text-center py-8 text-xs text-muted-foreground border-t border-border/40">
