@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { GraduationCap, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadLocalProfile } from "../hooks/useLocalProfile";
+import AskSparkLogo from "./AskSparkLogo";
 import NotificationBell from "./NotificationBell";
 
 const NAV_LINKS = [
@@ -33,18 +34,15 @@ export default function Header() {
       }`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link
-          to="/"
-          className="flex items-center gap-2.5 font-bold text-foreground"
-          data-ocid="nav.link"
-        >
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-primary">
-            <GraduationCap className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-display text-xl font-bold">
-            <span className="text-gradient">Ask</span>
-            <span className="text-foreground">Spark</span>
-          </span>
+        <Link to="/" className="flex items-center" data-ocid="nav.link">
+          {/* Desktop: horizontal logo */}
+          <AskSparkLogo
+            variant="horizontal"
+            height={38}
+            className="hidden md:block"
+          />
+          {/* Mobile: icon only */}
+          <AskSparkLogo variant="icon" height={36} className="md:hidden" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
@@ -53,7 +51,7 @@ export default function Header() {
               <a
                 key={link.href}
                 href={link.href}
-                className="hover:text-foreground transition-colors duration-200"
+                className="hover:text-indigo-600 transition-colors duration-150"
                 data-ocid="nav.link"
               >
                 {link.label}
@@ -62,7 +60,7 @@ export default function Header() {
               <Link
                 key={link.href}
                 to={link.href}
-                className="hover:text-foreground transition-colors duration-200"
+                className="hover:text-indigo-600 transition-colors duration-150"
                 data-ocid="nav.link"
               >
                 {link.label}
@@ -71,12 +69,12 @@ export default function Header() {
           )}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-3">
           {loadLocalProfile() && <NotificationBell />}
           <Button
             variant="outline"
             size="sm"
-            className="rounded-full border-primary/30 text-primary hover:bg-primary/5 font-medium"
+            className="rounded-full border-primary/30 text-primary hover:bg-primary/5 font-medium min-w-[120px] px-5 py-2.5 transition-all duration-150 hover:scale-[1.02]"
             onClick={() => navigate({ to: "/onboarding" })}
             data-ocid="header.secondary_button"
           >
@@ -84,26 +82,40 @@ export default function Header() {
           </Button>
           <Button
             size="sm"
-            className="rounded-full gradient-primary text-white hover:opacity-90 font-medium px-5 shadow-primary border-0"
+            className="rounded-full gradient-primary text-white hover:opacity-90 font-medium px-5 py-2.5 shadow-primary border-0 min-w-[120px] transition-all duration-150 hover:scale-[1.02]"
             onClick={() => navigate({ to: "/onboarding" })}
             data-ocid="header.primary_button"
           >
             I&apos;m a Teacher
           </Button>
+          <div
+            className="flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1.5 shadow-md shadow-blue-500/30 transition-transform duration-150 hover:scale-105"
+            data-ocid="header.brand_icon"
+          >
+            <AskSparkLogo variant="icon" height={28} />
+          </div>
         </div>
 
-        <button
-          type="button"
-          className="md:hidden p-2 rounded-xl hover:bg-muted transition-colors"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          data-ocid="header.toggle"
-        >
-          {mobileOpen ? (
-            <X className="w-5 h-5" />
-          ) : (
-            <Menu className="w-5 h-5" />
-          )}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <div
+            className="flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1 shadow-md shadow-blue-500/30"
+            data-ocid="header.brand_icon_mobile"
+          >
+            <AskSparkLogo variant="icon" height={26} />
+          </div>
+          <button
+            type="button"
+            className="p-2 rounded-xl hover:bg-muted transition-colors"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            data-ocid="header.toggle"
+          >
+            {mobileOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {mobileOpen && (
@@ -140,7 +152,7 @@ export default function Header() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full border-primary/30 text-primary"
+              className="rounded-full border-primary/30 text-primary w-full py-2.5"
               onClick={() => {
                 navigate({ to: "/onboarding" });
                 setMobileOpen(false);
@@ -151,7 +163,7 @@ export default function Header() {
             </Button>
             <Button
               size="sm"
-              className="rounded-full gradient-primary text-white border-0"
+              className="rounded-full gradient-primary text-white border-0 w-full py-2.5"
               onClick={() => {
                 navigate({ to: "/onboarding" });
                 setMobileOpen(false);

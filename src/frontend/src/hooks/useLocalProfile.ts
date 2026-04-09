@@ -3,7 +3,7 @@
  * No authentication required. A unique userId is generated once and persisted.
  */
 
-import type { AppRole } from "../backend";
+import type { AppRole } from "../types/appTypes";
 
 const USER_ID_KEY = "askspark_userId";
 const PROFILE_KEY = "askspark_profile";
@@ -17,6 +17,7 @@ export interface LocalProfile {
   userBranch?: string;
   profileImageUrl?: string;
   interests?: string[];
+  isTeacherInitialized?: boolean;
 }
 
 /** Returns existing userId or generates a new one */

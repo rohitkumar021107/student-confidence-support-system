@@ -20,13 +20,18 @@ export async function saveUserToFirestore(
   userId: string,
   name: string,
   role: string,
+  setTeacherInitialized?: boolean,
 ): Promise<void> {
   try {
-    await setDoc(
-      doc(db, "users", userId),
-      { name, role, updatedAt: Timestamp.now() },
-      { merge: true },
-    );
+    const data: Record<string, unknown> = {
+      name,
+      role,
+      updatedAt: Timestamp.now(),
+    };
+    if (setTeacherInitialized) {
+      data.isTeacherInitialized = true;
+    }
+    await setDoc(doc(db, "users", userId), data, { merge: true });
   } catch {
     /* silent fail — localStorage is primary */
   }
