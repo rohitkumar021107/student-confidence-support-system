@@ -30,8 +30,7 @@ import { toast } from "sonner";
 import Header from "../components/Header";
 import {
   COLLEGE_BRANCHES,
-  COLLEGE_BRANCH_NAMES,
-  SCHOOL_CLASSES,
+  FULL_CLASS_LIST,
   SCHOOL_SUBJECTS,
   readUserProfile,
 } from "../data/branchData";
@@ -100,12 +99,6 @@ export default function SubmitDoubt() {
 
   const currentSubjects = getSubjectsForBranch(form.branch);
 
-  const isSchoolMode =
-    profile.userType === "school" || SCHOOL_CLASSES.includes(form.branch);
-  const isCollegeMode =
-    profile.userType === "college" ||
-    COLLEGE_BRANCH_NAMES.includes(form.branch);
-
   // When branch/class changes, reset subject if it's no longer valid
   const handleBranchChange = (val: string) => {
     const subs = getSubjectsForBranch(val);
@@ -136,16 +129,40 @@ export default function SubmitDoubt() {
     form.title.trim().length > 5 &&
     form.description.trim().length > 10;
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError(null);
+
+    console.log("[SubmitDoubt] handleSubmit called", {
+      branch: form.branch,
+      subject: form.subject,
+      titleLength: form.title.trim().length,
+    });
+
+    // Safety net — always unblock the button after 10 seconds
+    const safetyTimer = setTimeout(() => {
+      console.warn("[SubmitDoubt] Safety timer fired — forcing loading off");
+      setSubmitting(false);
+    }, 10_000);
+
     try {
-      const fullText = `[${form.branch} | ${form.subject}]\n\n${form.title}\n\n${form.description}`;
+      const fullText = `${form.title.trim()}\n\n${form.description.trim()}`;
 
-      await submitDoubtMutation.mutateAsync({
-        text: fullText,
-        isAnonymous: form.anonymous,
-      });
+      await Promise.race([
+        submitDoubtMutation.mutateAsync({
+          text: fullText,
+          isAnonymous: form.anonymous,
+          branch: form.branch,
+          subject: form.subject,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Request timed out")), 8_000),
+        ),
+      ]);
 
+      // Firestore succeeded
       toast.success(
         "Doubt submitted successfully! 🎉 A teacher will answer soon.",
       );
@@ -159,38 +176,44 @@ export default function SubmitDoubt() {
       });
       setStep(1);
     } catch (err) {
-      console.error("Doubt submission failed:", err);
-      toast.error(
-        "Submission failed. Please check your connection and try again.",
-      );
+      console.error("[SubmitDoubt] submission error:", err);
+      if (err instanceof Error && err.message === "saved_offline") {
+        // Saved to localStorage — treat as soft success
+        toast.success(
+          "Doubt submitted successfully! 📱 It will sync when connection improves.",
+        );
+        setForm({
+          branch: profile.userBranch ?? profile.userClass ?? "",
+          subject: "",
+          title: "",
+          description: "",
+          anonymous: false,
+          images: [],
+        });
+        setStep(1);
+      } else {
+        const msg =
+          err instanceof Error && err.message === "Request timed out"
+            ? "Submission timed out. Please check your connection and try again."
+            : "Failed to submit doubt. Please try again.";
+        setSubmitError(msg);
+        toast.error(msg);
+      }
     } finally {
+      clearTimeout(safetyTimer);
       setSubmitting(false);
     }
   };
 
-  // Label for branch/class selector
-  const branchLabel = isCollegeMode
-    ? "Branch"
-    : isSchoolMode
-      ? "Class"
-      : "Class / Branch";
-  const branchPlaceholder = isCollegeMode
-    ? "Select branch"
-    : isSchoolMode
-      ? "Select class"
-      : "Select class or branch";
-
-  // Items for branch/class selector
-  const branchItems: string[] = isCollegeMode
-    ? COLLEGE_BRANCH_NAMES
-    : isSchoolMode
-      ? SCHOOL_CLASSES
-      : [...SCHOOL_CLASSES, ...COLLEGE_BRANCH_NAMES];
+  // Full class list from branchData — all 14 options in correct order
+  const branchLabel = "Class / Branch";
+  const branchPlaceholder = "Select your class or branch";
+  const branchItems: string[] = FULL_CLASS_LIST;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen dashboard-gradient">
       <Header />
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12 relative z-10">
         <div className="text-center mb-10">
           <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-primary">
             <GraduationCap className="w-7 h-7 text-white" />
@@ -216,7 +239,7 @@ export default function SubmitDoubt() {
                         ? "gradient-primary text-white shadow-primary"
                         : step === s.n
                           ? "gradient-primary text-white shadow-primary"
-                          : "bg-muted text-muted-foreground"
+                          : "bg-secondary/40 text-muted-foreground border border-primary/20"
                     }`}
                   >
                     {step > s.n ? <CheckCircle2 className="w-5 h-5" /> : s.n}
@@ -226,7 +249,7 @@ export default function SubmitDoubt() {
                       step === s.n
                         ? "text-primary"
                         : step > s.n
-                          ? "text-green-600"
+                          ? "text-accent"
                           : "text-muted-foreground"
                     }`}
                   >
@@ -236,7 +259,7 @@ export default function SubmitDoubt() {
                 {i < STEPS.length - 1 && (
                   <div
                     className={`h-0.5 flex-1 mx-2 rounded transition-all duration-500 ${
-                      step > s.n ? "bg-primary" : "bg-muted"
+                      step > s.n ? "bg-primary" : "bg-secondary/40"
                     }`}
                   />
                 )}
@@ -245,7 +268,7 @@ export default function SubmitDoubt() {
           </div>
         </div>
 
-        <Card className="glass-card warm-shadow-lg border-white/40">
+        <Card className="glass-card warm-shadow-lg border-primary/20">
           <CardContent className="p-6 sm:p-8">
             {/* Step 1 */}
             {step === 1 && (
@@ -262,7 +285,7 @@ export default function SubmitDoubt() {
                     onValueChange={handleBranchChange}
                   >
                     <SelectTrigger
-                      className="border-border"
+                      className="border-primary/20 bg-secondary/20"
                       data-ocid="submit.select"
                     >
                       <SelectValue placeholder={branchPlaceholder} />
@@ -285,7 +308,7 @@ export default function SubmitDoubt() {
                     onValueChange={(v) => updateForm("subject", v)}
                   >
                     <SelectTrigger
-                      className="border-border"
+                      className="border-primary/20 bg-secondary/20"
                       data-ocid="submit.select"
                     >
                       <SelectValue placeholder="Select a subject" />
@@ -306,7 +329,7 @@ export default function SubmitDoubt() {
                     placeholder="e.g. Why does integration by parts work?"
                     value={form.title}
                     onChange={(e) => updateForm("title", e.target.value)}
-                    className="border-border"
+                    className="border-primary/20 bg-secondary/20 focus:border-primary/50"
                     data-ocid="submit.input"
                   />
                 </div>
@@ -316,14 +339,14 @@ export default function SubmitDoubt() {
                     placeholder="Explain what you understand so far and what's confusing you. The more detail, the better the answer!"
                     value={form.description}
                     onChange={(e) => updateForm("description", e.target.value)}
-                    className="border-border min-h-[120px] resize-none"
+                    className="border-primary/20 bg-secondary/20 focus:border-primary/50 min-h-[120px] resize-none"
                     data-ocid="submit.textarea"
                   />
                   <div className="text-xs text-muted-foreground text-right">
                     {form.description.length} chars
                   </div>
                 </div>
-                <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-secondary/30 border border-primary/20">
                   <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
@@ -400,7 +423,7 @@ export default function SubmitDoubt() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-2.5 p-6 rounded-2xl border-2 border-border bg-muted/30 text-foreground font-semibold hover:border-primary/50 hover:bg-muted/60 transition-colors"
+                    className="flex flex-col items-center justify-center gap-2.5 p-6 rounded-2xl border-2 border-primary/20 bg-secondary/20 text-foreground font-semibold hover:border-primary/50 hover:bg-secondary/40 transition-colors"
                     data-ocid="submit.upload_button"
                   >
                     <Upload className="w-8 h-8 text-muted-foreground" />
@@ -416,8 +439,8 @@ export default function SubmitDoubt() {
                   type="button"
                   className={`border border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer w-full ${
                     dragOver
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40"
+                      ? "border-primary bg-primary/10"
+                      : "border-primary/20 hover:border-primary/50 hover:bg-primary/5"
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -479,7 +502,7 @@ export default function SubmitDoubt() {
                 <h2 className="font-display text-xl font-bold text-foreground">
                   🚀 Review &amp; Submit
                 </h2>
-                <Card className="border-border bg-muted/30">
+                <Card className="border-primary/20 bg-secondary/20">
                   <CardContent className="p-5 space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
@@ -523,7 +546,15 @@ export default function SubmitDoubt() {
                     )}
                   </CardContent>
                 </Card>
-                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-sm text-blue-700">
+                {submitError && (
+                  <div
+                    className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-sm text-destructive"
+                    data-ocid="submit.error_state"
+                  >
+                    <strong>Error:</strong> {submitError}
+                  </div>
+                )}
+                <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary">
                   <strong>What happens next?</strong> Your doubt will be
                   submitted and a teacher will respond — usually within 24
                   hours.
@@ -550,7 +581,7 @@ export default function SubmitDoubt() {
             )}
 
             {/* Nav buttons */}
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+            <div className="flex items-center justify-between mt-8 pt-6 border-t border-primary/20">
               {step > 1 ? (
                 <Button
                   variant="outline"

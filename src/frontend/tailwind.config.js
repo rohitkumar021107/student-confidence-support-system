@@ -80,9 +80,10 @@ export default {
       },
       boxShadow: {
         xs: "0 1px 2px 0 rgba(0,0,0,0.05)",
-        warm: "0 4px 24px rgba(60,40,30,0.08), 0 1px 4px rgba(60,40,30,0.05)",
-        "warm-lg": "0 8px 40px rgba(60,40,30,0.12), 0 2px 8px rgba(60,40,30,0.08)",
-        primary: "0 8px 32px rgba(80,60,200,0.25)",
+        warm: "0 4px 24px rgba(139,80,230,0.25), 0 1px 4px rgba(139,80,230,0.12)",
+        "warm-lg": "0 8px 40px rgba(139,80,230,0.35), 0 2px 8px rgba(139,80,230,0.18)",
+        primary: "0 8px 32px rgba(139,80,230,0.35), 0 0 20px rgba(139,80,230,0.18)",
+        glow: "0 0 20px rgba(168,140,255,0.4), inset 0 0 8px rgba(168,140,255,0.1)",
       },
       keyframes: {
         "accordion-down": {

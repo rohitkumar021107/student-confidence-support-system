@@ -1,13 +1,29 @@
 export type UserType = "school" | "college";
+export const FULL_CLASS_LIST: string[] = [
+  "6th",
+  "7th",
+  "8th",
+  "9th",
+  "10th",
+  "Inter 1st Year",
+  "Inter 2nd Year",
+  "Diploma",
+  "BTech CSE",
+  "BTech EEE",
+  "BTech ECE",
+  "BCom",
+  "Degree",
+  "Other",
+];
 
 export const SCHOOL_CLASSES = [
-  "Class 6",
-  "Class 7",
-  "Class 8",
-  "Class 9",
-  "Class 10",
-  "Class 11",
-  "Class 12",
+  "6th",
+  "7th",
+  "8th",
+  "9th",
+  "10th",
+  "11th",
+  "12th",
 ];
 
 export const SCHOOL_SUBJECTS = [

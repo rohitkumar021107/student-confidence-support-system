@@ -145,36 +145,39 @@ export function useAllDoubts(): FirestoreDoubt[] {
 export async function submitDoubt(data: {
   question: string;
   subject: string;
+  class: string;
   studentName: string;
   userId: string;
   isAnonymous: boolean;
 }): Promise<void> {
-  try {
-    await addDoc(collection(db, "doubts"), {
-      ...data,
-      status: "pending",
-      createdAt: Timestamp.now(),
-    });
-  } catch {
-    // Fallback to localStorage
-    const stored = JSON.parse(localStorage.getItem("askspark_doubts") || "[]");
-    stored.unshift({
-      id: `local_${Date.now()}`,
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Request timed out")), 8000),
+  );
+
+  console.log("[submitDoubt] Attempting Firestore write:", {
+    question: data.question.slice(0, 60),
+    subject: data.subject,
+    class: data.class,
+    userId: data.userId,
+    isAnonymous: data.isAnonymous,
+  });
+
+  // Let errors propagate — caller decides on fallback
+  const ref = await Promise.race([
+    addDoc(collection(db, "doubts"), {
       question: data.question,
-      title: data.question,
       subject: data.subject,
+      class: data.class,
       studentName: data.studentName,
       userId: data.userId,
       isAnonymous: data.isAnonymous,
       status: "pending",
-      timestamp: Date.now(),
-      createdAt: Date.now(),
-    });
-    localStorage.setItem(
-      "askspark_doubts",
-      JSON.stringify(stored.slice(0, 100)),
-    );
-  }
+      createdAt: Timestamp.now(),
+    }),
+    timeout,
+  ]);
+
+  console.log("[submitDoubt] Firestore write succeeded, docId:", ref.id);
 }
 
 export async function answerDoubt(

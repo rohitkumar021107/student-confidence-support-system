@@ -98,6 +98,10 @@ export function useNotificationCount() {
 interface DoubtInput {
   text: string;
   isAnonymous: boolean;
+  /** The selected class or branch (e.g. "10th", "CSE") */
+  branch: string;
+  /** Subject within that class/branch */
+  subject: string;
 }
 
 export function useSubmitDoubt() {
@@ -106,19 +110,32 @@ export function useSubmitDoubt() {
     mutationFn: async (input: DoubtInput) => {
       const userId = getOrCreateUserId();
       const profile = loadLocalProfile();
-      const subject = profile?.userBranch ?? profile?.userClass ?? "General";
       const studentName = profile?.displayName ?? "Anonymous";
 
+      console.log("[useSubmitDoubt] Starting submission", {
+        branch: input.branch,
+        subject: input.subject,
+        isAnonymous: input.isAnonymous,
+        userId,
+      });
+
       try {
+        // Primary path — Firestore
         await firestoreSubmitDoubt({
           question: input.text,
-          subject,
+          subject: input.subject,
+          class: input.branch,
           studentName: input.isAnonymous ? "Anonymous" : studentName,
           userId,
           isAnonymous: input.isAnonymous,
         });
-      } catch {
-        // Final fallback to localStorage
+        console.log("[useSubmitDoubt] Firestore submission complete");
+      } catch (firestoreErr) {
+        console.error(
+          "[useSubmitDoubt] Firestore failed, using localStorage fallback:",
+          firestoreErr,
+        );
+        // Fallback to localStorage so the user's doubt isn't lost
         const stored = JSON.parse(
           localStorage.getItem("askspark_doubts") || "[]",
         );
@@ -126,8 +143,10 @@ export function useSubmitDoubt() {
           id: `local_${Date.now()}`,
           text: input.text,
           title: input.text,
-          subject,
-          branch: subject,
+          question: input.text,
+          subject: input.subject,
+          class: input.branch,
+          branch: input.branch,
           isAnonymous: input.isAnonymous,
           userId,
           timestamp: Date.now(),
@@ -139,6 +158,8 @@ export function useSubmitDoubt() {
           "askspark_doubts",
           JSON.stringify(stored.slice(0, 100)),
         );
+        // Re-throw so the caller can show a warning (saved offline)
+        throw new Error("saved_offline");
       }
     },
     onSuccess: () => {

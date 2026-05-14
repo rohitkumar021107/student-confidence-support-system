@@ -1,6 +1,6 @@
-# Design Brief — AskSpark Landing Page
+# Design Brief — AskSpark Dark Theme
 
-**Theme:** Light mode | **Primary Font:** Bricolage Grotesque | **Body Font:** Figtree | **Accent Usage:** CTAs, highlights, gradient text | **Layout:** Card-based, editorial, clean grid | **Aesthetic:** Premium modern SaaS (Notion/Stripe style), warm, approachable, confidence-building
+**Theme:** Dark mode (navy/indigo gradient) | **Primary Font:** Bricolage Grotesque | **Body Font:** Figtree | **Accent Usage:** Neon purple/blue glows, CTA buttons, floating elements | **Layout:** Glassmorphic card-based, sidebar nav, hero with floating badges | **Aesthetic:** Premium AI startup (Linear/Notion dark mode), neon accents, smooth animations, professional confidence-building
 
 ---
 
@@ -8,13 +8,13 @@
 
 | Token            | L    | C    | H   | Usage                          |
 | :--------------- | :--- | :--- | :-- | :----------------------------- |
-| background       | 0.98 | 0.00 | 265 | Page background               |
-| foreground       | 0.15 | 0.03 | 265 | Body text, primary text color  |
-| primary          | 0.55 | 0.22 | 265 | Buttons, links, accents        |
-| accent           | 0.78 | 0.12 | 280 | Highlights, badges, emphasis   |
-| card             | 0.99 | 0.00 | 265 | Glass cards, elevated surfaces |
-| muted            | 0.94 | 0.02 | 265 | Disabled states, subtle text   |
-| destructive      | 0.58 | 0.25 | 27  | Alerts, error states           |
+| background       | 0.08 | 0.00 | 265 | Page background (deep navy)   |
+| foreground       | 0.92 | 0.02 | 265 | Body text, high contrast white |
+| primary          | 0.62 | 0.26 | 270 | Neon purple buttons, accents    |
+| accent           | 0.68 | 0.30 | 270 | Glow effects, highlights       |
+| card             | 0.12 | 0.01 | 265 | Dark glassmorphic cards        |
+| muted            | 0.20 | 0.05 | 265 | Secondary elements, borders    |
+| destructive      | 0.58 | 0.25 | 27  | Error alerts and warnings      |
 
 ---
 
@@ -22,9 +22,9 @@
 
 | Gradient       | Definition                                                      | Use                  |
 | :------------- | :-------------------------------------------------------------- | :------------------- |
-| bg             | `oklch(0.95 0.03 230) → oklch(0.92 0.05 260) → oklch(0.88 0.07 290)` | Full page background |
-| primary        | `oklch(0.55 0.22 265) → oklch(0.48 0.24 285)`                   | CTA buttons, accents |
-| text           | `oklch(0.55 0.22 265) → oklch(0.55 0.22 310)`                   | Gradient text effect |
+| bg             | `oklch(0.08 0.003 265) → oklch(0.11 0.012 280) → oklch(0.14 0.02 300)` | Dark navy page bg   |
+| primary        | `oklch(0.68 0.30 270) → oklch(0.62 0.28 290)`                   | Neon purple buttons |
+| text           | `oklch(0.68 0.30 270) → oklch(0.65 0.28 310)`                   | Gradient text glow  |
 
 ---
 
@@ -32,11 +32,11 @@
 
 | Zone      | Treatment                                              | Elevation  |
 | :-------- | :----------------------------------------------------- | :--------- |
-| Navbar    | Glass nav (`glass-nav`), 0.85 opacity, blur 20px     | Elevated   |
-| Hero      | Full-width gradient bg, glassmorphism cards            | Floating   |
-| Sections  | Alternating white card bg and subtle muted bg          | Layered    |
-| CTA areas | Gradient-primary buttons, full width or inline         | Prominent  |
-| Footer    | Muted bg, border-top, same treatment as header        | Grounded   |
+| Navbar    | Dark glass, neon border glow, blur 16px               | Floating   |
+| Hero      | Deep gradient (navy→indigo), floating glassmorphic badges | Premium    |
+| Cards     | Dark glass (rgba 45%, neon purple border, glow shadow) | Layered    |
+| CTA areas | Neon gradient buttons with glow on hover              | Prominent  |
+| Footer    | Dark bg with muted border, glow accents               | Grounded   |
 
 ---
 
@@ -79,12 +79,12 @@
 
 ## Signature Details
 
-1. **Animated floating badges** in hero (Ask, Get Answers, Build Confidence) with staggered float animation
-2. **Glassmorphic cards** throughout with blur backdrop and white border — premium, modern feel
-3. **Gradient hero background** (blue → purple → indigo) creates depth and visual interest
-4. **Soft shadows** (not harsh) reinforce elevation and premium aesthetic
-5. **Bold Bricolage Grotesque headings** paired with clean Figtree body — strong hierarchy
-6. **Ample whitespace** between sections maintains breathability and focus
+1. **Neon glow effects** on buttons and interactive elements — purple/blue aura (0 0 20px rgba(168,140,255,0.4))
+2. **Glassmorphic dark cards** with semi-transparent dark glass (rgba 19,18,45 / 0.45) and neon purple borders
+3. **Deep navy-to-indigo gradient** background creates immersive dark theme with depth
+4. **Floating animated badges** in hero with staggered timing and glow shadows
+5. **Bold Bricolage Grotesque headings** on dark bg with text-gradient highlight for impact
+6. **Smooth hover interactions** — cards lift with enhanced glow, buttons scale with neon aura
 
 ---
 
